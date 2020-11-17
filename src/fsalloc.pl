@@ -51,7 +51,7 @@ if ($cpus_per_task_opt) {
 }
 
 if ($error_opt) {
-	push @OPTIONS, "-error $error_opt ";
+	push @OPTIONS, "--error=$error_opt ";
 }
 
 if ($flux_debug_opt) {
@@ -67,7 +67,7 @@ if ($nodes_opt) {
 }
 
 if ($output_opt) {
-	push @OPTIONS, "-o $output_opt ";
+	push @OPTIONS, "--output=$output_opt ";
 }
 
 if ($priority_opt) {

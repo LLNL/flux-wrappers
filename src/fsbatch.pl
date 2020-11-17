@@ -95,7 +95,7 @@ GetOpts(@SAVEDARGV);
 	}
 
 	if ($error_opt) {
-		push @OPTIONS, "-error $error_opt ";
+		push @OPTIONS, "--error=$error_opt ";
 	}
 
 	if ($flux_debug_opt) {
@@ -119,7 +119,7 @@ GetOpts(@SAVEDARGV);
 	}
 
 	if ($output_opt) {
-		push @OPTIONS, "-o $output_opt ";
+		push @OPTIONS, "--output=$output_opt ";
 	}
 
 	if ($priority_opt) {

@@ -2,7 +2,7 @@
 
 # Written by Philip D. Eckert <eckert2@llnl.gov> and Ryan Day <day36@llnl.gov>
 
-use Getopt::Long 2.24 qw(:config no_ignore_case);
+use Getopt::Long 2.24 qw(:config no_ignore_case no_auto_abbrev);
 use strict;
 
 	
@@ -10,7 +10,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $beginbxopt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $help_opt, $Z_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $beginbxopt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -94,7 +94,7 @@ if ($chdir_opt) {
 }
 
 if ($error_opt) {
-	push @OPTIONS, "-error=$error_opt ";
+	push @OPTIONS, "--error=$error_opt ";
 }
 
 if ($flux_debug_opt) {
@@ -133,7 +133,7 @@ if ($partition_opt) {
     push @OPTIONS, "--setattr=system.queue=$partition_opt ";
 }
 
-if ($priority_opt) {
+if ($priority_opt=~/^\d+$/) {
 	push @OPTIONS, "--urgency=$priority_opt ";
 }
 
@@ -150,7 +150,7 @@ if ($verbose_opt) {
 	push @OPTIONS, "-v ";
 }
 
-if ($Z_opt) {
+if ($no_allocate_opt) {
 	push @OPTIONS, "--dry-run ";
 }
 
@@ -227,47 +227,32 @@ sub GetOpts
 #       A little hacking with the ARGV array to allows
 #       arguments and parameters to be squeezed together
 #       like msub allows. This works becuase msub paired
-#       arguments options, are only one character.
+#       arguments options are only one character.
 #
 #       ie. -A abc  can be -Aabc
 #
-	my @NARGV;
-	foreach my $tmp (@ARGV) {
-		chomp $tmp;
-	        $tmp =~ s/^--/-/;
-	        if ($tmp =~ /^-/ && $tmp !~ /=/) {
-	                if (length($tmp) > 2   &&
-	                     $tmp !~ /man/     &&
-	                     $tmp !~ /version/ &&
-	                     $tmp !~ /slurm/   &&
-	                     $tmp !~ /help/) {
-	                        my ($arg1) = ($tmp =~ m/^(..)/);
-	                        my ($arg2) = ($tmp =~ m/^..(.*)/);
-	                        push @NARGV, $arg1;
-	                        push @NARGV, $arg2;
-	                } else {
-	                        push @NARGV, $tmp;
-	                }
-	        } else {
-	                push @NARGV, $tmp;
-	        }
-	}
-
-	@ARGV = @NARGV;
+    my @tmpargv;
+    foreach my $tmp (@ARGV){
+        unless( $tmp =~ /^(\-\w)(\S+)/ and 
+            push(@tmpargv, $1),
+            push(@tmpargv, $2) ){
+            push @tmpargv, $tmp;
+        }
+    }
 
 	return GetOptions(
-		'c|cpus-per-task=s' 	=> \$cpus_per_task_opt,
+		'c|cpus-per-task=i' 	=> \$cpus_per_task_opt,
 		'comment=s'          	=> \$comment_opt,
         'D|chdir=s'           => \$chdir_opt,
 		'e|error=s'         	=> \$error_opt,
-        'gpus-per-task=s'   => \$gpus_per_task_opt,
+        'gpus-per-task=i'   => \$gpus_per_task_opt,
         'H|hold'            => \$hold_opt,
 		'h|help'         	=> \$help_opt,
         'i|input=s'             => \$input_opt,
         'l|label'         		=> \$label_opt,
-		'N|nodes=s'         	=> \$nodes_opt,
-		'n|ntasks=s'        	=> \$ntasks_opt,
-		'nice=s'         	=> \$priority_opt,
+		'N|nodes=i'         	=> \$nodes_opt,
+		'n|ntasks=i'        	=> \$ntasks_opt,
+		'nice=i'         	=> \$priority_opt,
 		'o|output=s'        	=> \$output_opt,
         'p|partition=s'     		=> \$partition_opt,
 		'slurmd-debug=s'     	=> \$flux_debug_opt,

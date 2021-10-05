@@ -284,30 +284,30 @@ sub GetOpts
 sub usage
 {
 
-	printf("\n
-		-Slurm compatible options supported in Flux-
+	printf("
+    -Slurm compatible options supported in Flux-
 
-		OPTIONS
-		=======
-	       	-c|cpus-per-task=<count>	Number of cpus per task.
-		    --comment=<comment>         User defined comment.
-            -D|--chdir=<directory>      Specify a working directory.
-       		-e|--error=<filename>		Path and file name for stderr data.
-            --gpus-per-task=<count>     Number of gpus per task.
-            -H|--hold                   Submit job in a 'held' state.
-       		-h|--help			        List the available options.
-            -i|--input=<filename>       Path and file name for stdin.
-            -l|--label                  Label IO with task tank prefixes.
-	       	-N|--nodes=<count>		    Number of nodes needed.
-       		-n|--ntasks=<count>		    Number of tasks needed.
-            --nice=<number>             User defined priority.
-       		-o|--output=<filename>		Path and file name for stdout data.
-            -p|--partion=<partition>    Partition or queue to submit job to.
-       		--slurmd-debug=<level>		Debugging added.
-            -t|--time=<timelimit>       Wall time of job.
-       		-v|-verbose			        Give more messages.
-       		-Z|--no-allocate		    Run a job on a set of nodes with doing an actual allocation.
-	\n\n");
+OPTIONS
+=======
+-c|cpus-per-task=<count>    Number of cpus per task.
+--comment=<comment>         User defined comment.
+-D|--chdir=<directory>      Specify a working directory.
+-e|--error=<filename>       Path and file name for stderr data.
+--gpus-per-task=<count>     Number of gpus per task.
+-H|--hold                   Submit job in a 'held' state.
+-h|--help                   List the available options.
+-i|--input=<filename>       Path and file name for stdin.
+-l|--label                  Label IO with task tank prefixes.
+-N|--nodes=<count>          Number of nodes needed.
+-n|--ntasks=<count>         Number of tasks needed.
+--nice=<number>             User defined priority.
+-o|--output=<filename>      Path and file name for stdout data.
+-p|--partion=<partition>    Partition or queue to submit job to.
+--slurmd-debug=<level>      Debugging added.
+-t|--time=<timelimit>       Wall time of job.
+-v|-verbose                 Give more messages.
+-Z|--no-allocate            Run a job on a set of nodes with doing an actual allocation.
+\n\n");
 
 	exit;
 }

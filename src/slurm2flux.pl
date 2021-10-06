@@ -90,7 +90,7 @@ if ($cpus_per_task_opt) {
 }
 
 if ($chdir_opt) {
-    push @OPTIONS, "--setatttr=system.cwd=$chdir_opt ";
+    push @OPTIONS, "--setattr=system.cwd=$chdir_opt ";
 }
 
 if ($error_opt) {

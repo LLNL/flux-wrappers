@@ -10,7 +10,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $beginbxopt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $beginbxopt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -29,7 +29,7 @@ usage() if ($help_opt);
 # If we're running in batch mode (sbatch) we need to parse the script for #SBATCH stuff.
 # Otherwise, we just can just pass the rest on to flux.
 #
-if( $0 =~ /sbatch$/ ){
+if( $0 =~ /sbatch$/ and !$wrap_opt ){
     # At this point the only thing left on ARGV should be the script and
     # script arguments (if any).
     if (@ARGV) {
@@ -146,8 +146,12 @@ if ($hold_opt) {
     push @OPTIONS, "--urgency=0 ";
 }
 
-if ($verbose_opt) {
+if ($verbose_opt and $0 !~ /sbatch/) {
 	push @OPTIONS, "-v ";
+}
+
+if ($wrap_opt) {
+    push @OPTIONS, "--wrap $wrap_opt";
 }
 
 if ($no_allocate_opt) {
@@ -172,9 +176,9 @@ if( $0 =~ /srun$/ ){
     	$command .= " $scriptArgs" if ($scriptArgs);
     }
     if( $verbose_opt ) {
-        print "# running: flux mini submit @OPTIONS $command\n";
+        print "# running: flux mini batch @OPTIONS $command\n";
     }
-	system("flux mini submit @OPTIONS $command");
+	system("flux mini batch @OPTIONS $command");
 }elsif( $0 =~ /salloc$/ ){
     if( $verbose_opt ) {
         print "# running: flux mini alloc @OPTIONS $commandLine\n";
@@ -234,30 +238,33 @@ sub GetOpts
     my @tmpargv;
     foreach my $tmp (@ARGV){
         unless( $tmp =~ /^(\-\w)(\S+)/ and 
-            push(@tmpargv, $1),
-            push(@tmpargv, $2) ){
+                push(@tmpargv, $1),
+                push(@tmpargv, $2) ){
             push @tmpargv, $tmp;
         }
     }
 
+    @ARGV = @tmpargv;
+
 	return GetOptions(
-		'c|cpus-per-task=i' 	=> \$cpus_per_task_opt,
-		'comment=s'          	=> \$comment_opt,
-        'D|chdir=s'           => \$chdir_opt,
-		'e|error=s'         	=> \$error_opt,
+		'c|cpus-per-task=i'	=> \$cpus_per_task_opt,
+		'comment=s'        	=> \$comment_opt,
+        'D|chdir=s'         => \$chdir_opt,
+		'e|error=s'        	=> \$error_opt,
         'gpus-per-task=i'   => \$gpus_per_task_opt,
         'H|hold'            => \$hold_opt,
 		'h|help'         	=> \$help_opt,
-        'i|input=s'             => \$input_opt,
-        'l|label'         		=> \$label_opt,
-		'N|nodes=i'         	=> \$nodes_opt,
-		'n|ntasks=i'        	=> \$ntasks_opt,
+        'i|input=s'         => \$input_opt,
+        'l|label'         	=> \$label_opt,
+		'N|nodes=i'        	=> \$nodes_opt,
+		'n|ntasks=i'       	=> \$ntasks_opt,
 		'nice=i'         	=> \$priority_opt,
-		'o|output=s'        	=> \$output_opt,
-        'p|partition=s'     		=> \$partition_opt,
-		'slurmd-debug=s'     	=> \$flux_debug_opt,
-		't|time=s'          	=> \$time_opt,
+		'o|output=s'       	=> \$output_opt,
+        'p|partition=s'    	=> \$partition_opt,
+		'slurmd-debug=s'   	=> \$flux_debug_opt,
+		't|time=s'         	=> \$time_opt,
 		'v|verbose'       	=> \$verbose_opt,
+        'wrap=s'            => \$wrap_opt,
 		'Z|no-allocate'   	=> \$no_allocate_opt,
 	);
 }
@@ -291,6 +298,7 @@ OPTIONS
 --slurmd-debug=<level>      Debugging added.
 -t|--time=<timelimit>       Wall time of job.
 -v|-verbose                 Give more messages.
+--wrap=<command>            Wrap command in an implied script.
 -Z|--no-allocate            Run a job on a set of nodes with doing an actual allocation.
 \n\n");
 

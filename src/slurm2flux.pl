@@ -82,7 +82,7 @@ if( $0 =~ /sbatch$/ and !$wrap_opt ){
 # Translate options
 #
 if ($comment_opt) {
-	push @OPTIONS, "--setattr=user.comment=$comment_opt ";
+	push @OPTIONS, "--setattr=user.comment='$comment_opt' ";
 }
 
 if ($cpus_per_task_opt) {

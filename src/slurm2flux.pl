@@ -97,6 +97,10 @@ if ($error_opt) {
 	push @OPTIONS, "--error=$error_opt ";
 }
 
+if ($dependent_opt) {
+    push @OPTIONS, processDepend($dependent_opt);
+}
+
 if ($flux_debug_opt) {
 	push @OPTIONS, "--debug ";
 }
@@ -219,6 +223,30 @@ sub timeToSeconds
 	return $seconds;
 }
 
+#
+# translate Slurm dependency to Flux dependency
+#
+sub processDepend
+{
+    my ($dependstr) = @_;
+    my $retstr = '';
+    if( $dependstr =~ /\:/ ){
+        my @depends = split /\:/, $dependstr;
+        my $condition = shift @depends;
+        if( $condition eq 'after' or
+            $condition eq 'afterany' or
+            $condition eq 'afterok' or 
+            $condition eq 'afternotak'
+            ){
+            foreach my $jobid (@depends){
+                $retstr .= "--dependency=$condition:$jobid ";
+            }
+        }
+    }else{
+        $retstr = "--dependency=afterany:$dependstr ";
+    }
+    return $retstr;
+}
 
 #
 # Check the option, need at least a job id.
@@ -250,6 +278,7 @@ sub GetOpts
 		'c|cpus-per-task=i'	=> \$cpus_per_task_opt,
 		'comment=s'        	=> \$comment_opt,
         'D|chdir=s'         => \$chdir_opt,
+        'd|dependency=s'    => \$dependent_opt,
 		'e|error=s'        	=> \$error_opt,
         'gpus-per-task=i'   => \$gpus_per_task_opt,
         'H|hold'            => \$hold_opt,
@@ -284,6 +313,7 @@ OPTIONS
 -c|cpus-per-task=<count>    Number of cpus per task.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
+-d|--dependency=<jobid>     Specify job that this job is dependent on
 -e|--error=<filename>       Path and file name for stderr data.
 --gpus-per-task=<count>     Number of gpus per task.
 -H|--hold                   Submit job in a 'held' state.
@@ -313,7 +343,6 @@ OPTIONS
 #                'b|batch'         		=> \$batch_opt,
 #                'Bextra-node-info=s' 		=> \$vextra_node_al,
 #                'C|constraint=s'    		=> \$constraint_opt,
-#                'd|dependency=s'    		=> \$dependent_opt,
 #                'E|preserve-env'  		=> \$preserve_opt,
 #                'E|preserve-flux-env' 		=> \$preserve_opt,
 #                'G|geometry=s'      		=> \$geometry_opt,

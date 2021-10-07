@@ -10,7 +10,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $beginbxopt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -81,6 +81,10 @@ if( $0 =~ /sbatch$/ and !$wrap_opt ){
 #
 # Translate options
 #
+if ($begin_opt) {
+    push @OPTIONS, "--begin-time=".processBegin($begin_opt)." ";
+}
+
 if ($comment_opt) {
 	push @OPTIONS, "--setattr=user.comment='$comment_opt' ";
 }
@@ -195,6 +199,18 @@ if( $0 =~ /srun$/ ){
 exit;
 
 #
+# translate Slurm begin datetime to Flux datetime
+# most of them just work, but the YYYY-MM-DD[THH:MM[:SS] format
+# needs a bit of massaging
+#
+sub processBegin
+{
+    my ($datetime) = @_;
+    $datetime =~ s/(\d+)T(\d+)/$1 $2/;
+    return "'".$datetime."'";
+}
+
+#
 # translate Slurm time format (days-hours:minutes:seconds) to seconds
 #
 sub timeToSeconds
@@ -275,6 +291,7 @@ sub GetOpts
     @ARGV = @tmpargv;
 
 	return GetOptions(
+        'b|begin=s'         => \$begin_opt,
 		'c|cpus-per-task=i'	=> \$cpus_per_task_opt,
 		'comment=s'        	=> \$comment_opt,
         'D|chdir=s'         => \$chdir_opt,
@@ -310,6 +327,7 @@ sub usage
 
 OPTIONS
 =======
+-b|--begin=<datetime>       Ensure that job doesn't start until date/time.
 -c|cpus-per-task=<count>    Number of cpus per task.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
@@ -370,7 +388,6 @@ OPTIONS
 #                'X|disable-status' 		=> \$disable_status_opt,
 #                'acctg-freq=s'       		=> \$acct_freq_opt,
 #                'alps=s'             		=> \$alps_opt,
-#                'begin=s'            		=> \$beginbxopt,
 #                'blrts-image=s'      		=> \$blrts_imnage_opt,
 #                'checkpoint=s'       		=> \$checkpoint_opt,
 #                'checkpoint-dir=s'   		=> \$checkpoint_dir_opt,

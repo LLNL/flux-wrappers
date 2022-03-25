@@ -9,6 +9,7 @@
 import argparse
 import flux
 import flux.job as fjob
+from flux.hostlist import Hostlist
 
 def print_argwarn(argval) :
 	'''
@@ -33,11 +34,16 @@ def parse_time(time) :
 	else :
 		return f"{minutes:02}:{seconds:02}"
 
-def get_nodestring(resource) :
-	'''
-	parse something from flux to get nodestring
-	'''
-	return "Coming Soon"
+def filter_byhostlist(j, jobfilter) :
+    '''
+    filter out jobs that did not run on hosts in jobfilter
+    '''
+    filtered_jobs = []
+    for job in j.jobs() :
+        for host in Hostlist(jobfilter) :
+            if host in Hostlist(job.nodelist) :
+                filtered_jobs.append(job)
+    return filtered_jobs
 
 def get_queuestring(sched) :
 	'''
@@ -49,7 +55,7 @@ def printsqueueheader() :
 	'''
 	print header for output
 	'''
-	print("             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)")
+	print("               JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)")
 
 def printsqueue(j, alljobs=False) :
 	'''
@@ -65,42 +71,47 @@ def printsqueue(j, alljobs=False) :
 		remstring = parse_time(j.t_remaining)
 		reasonnode = j.sched.reason_pending
 		if f"{j.sched.reason_pending}" == "" :
-			reasonnode=get_nodestring(j.annotations)
+			reasonnode=j.nodelist
 		partition = get_queuestring(j.sched)
-		print(f"         {j.id.f58:>9} {partition:>9} {j.name:>8} {j.username:>8} {j.status_abbrev:>2} {remstring:>10} {j.nnodes:>6} {reasonnode}")
+		print(f"         {j.id.f58:>10} {partition:>9} {j.name:>8.8} {j.username:>8} {j.status_abbrev:>2} {remstring:>10} {j.nnodes:>6} {reasonnode}")
 #		print(f"         {j.id} partition {j.name} {j.username} {j.status_abbrev} {j.t_remaining} {j.nnodes} {j.sched.reason_pending}")
 
 def main(parsedargs) :
-	args, unknown_args = parsedargs
-	if unknown_args  :
-		print_argwarn(" ".join(unknown_args))
-	if args.user != None :
-		user = args.user
-	else :
-		user = "all"
-	if args.state != None :
-		printall=True
-		if args.state != "all" :
-			print_argwarn(f"-t {args.state}")
-	else :
-		printall=False
-	myhandle = flux.Flux()
-	if args.jobs == None :
-		mylist = fjob.JobList(myhandle,user=user)
-	else :
-		joblist = []
-		for j in args.jobs.split(",") :
-			joblist.append(fjob.id_parse(j))
-		mylist = fjob.JobList(myhandle,user=user,ids=joblist)
-	if args.noheader != True :
-		printsqueueheader()
-	for job in mylist.jobs() :
-		printsqueue(job, alljobs=printall)
+    args, unknown_args = parsedargs
+    if unknown_args  :
+        print_argwarn(" ".join(unknown_args))
+    if args.user != None :
+        user = args.user
+    else :
+        user = "all"
+    if args.state != None :
+        printall=True
+        if args.state != "all" :
+            print_argwarn(f"-t {args.state}")
+    else :
+        printall=False
+    myhandle = flux.Flux()
+    if args.jobs == None :
+        mylist = fjob.JobList(myhandle,user=user)
+    else :
+        jobidlist = []
+        for j in args.jobs.split(",") :
+            jobidlist.append(fjob.id_parse(j))
+        mylist = fjob.JobList(myhandle,user=user,ids=jobidlist)
+    if args.nodelist:
+        myjoblist = filter_byhostlist(mylist, args.nodelist)
+    else :
+        myjoblist = mylist.jobs()
+    if args.noheader != True :
+        printsqueueheader()
+    for job in myjoblist :
+        printsqueue(job, alljobs=printall)
 
 if __name__ == '__main__' :
-	parser = argparse.ArgumentParser(description="List running and queued jobs in squeue format.", conflict_handler='resolve', allow_abbrev=False)
-	parser.add_argument('-u', '--user', metavar='<user>', help='show jobs run by user')
-	parser.add_argument('-t', '--state', metavar='<state>', help='use "-t all" to show jobs in all states, including completed jobs')
-	parser.add_argument('-j', '--jobs', metavar='<jobid>,<jobid>,....', help='display only jobs specified')
-	parser.add_argument('-h', '--noheader', action='store_true', help='do not print a header')
-	main(parser.parse_known_args())
+    parser = argparse.ArgumentParser(description="List running and queued jobs in squeue format.", conflict_handler='resolve', allow_abbrev=False)
+    parser.add_argument('-u', '--user', metavar='<user>', help='show jobs run by user')
+    parser.add_argument('-t', '--state', metavar='<state>', help='use "-t all" to show jobs in all states, including completed jobs')
+    parser.add_argument('-j', '--jobs', metavar='<jobid>,<jobid>,....', help='display only jobs specified')
+    parser.add_argument('-h', '--noheader', action='store_true', help='do not print a header')
+    parser.add_argument('-w', '--nodelist', metavar='<nodelist>', help='show jobs that ran on nodelist')
+    main(parser.parse_known_args())

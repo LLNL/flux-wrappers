@@ -223,7 +223,7 @@ sub timeToSeconds
 
 	my @req = split /:|-/, $duration;
 	if ($duration =~ /^(\d+)$/) {
-	        $seconds = $duration;
+	        $seconds = 60*$duration;
 	} else {
 	        my $inc;
 	        $seconds = pop(@req);

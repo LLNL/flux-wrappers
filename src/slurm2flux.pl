@@ -10,7 +10,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_opt, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -81,6 +81,10 @@ if( $0 =~ /sbatch$/ and !$wrap_opt ){
 #
 # Translate options
 #
+if ($account_opt) {
+    push @OPTIONS, "--settatr=system.bank=$account_opt ";
+}
+
 if ($begin_opt) {
     push @OPTIONS, "--begin-time=".processBegin($begin_opt)." ";
 }
@@ -105,6 +109,10 @@ if ($dependent_opt) {
     push @OPTIONS, processDepend($dependent_opt);
 }
 
+if ($exclusive_opt) {
+    push @OPTIONS, "--exclusive ";
+}
+
 if ($flux_debug_opt) {
 	push @OPTIONS, "--debug ";
 }
@@ -119,6 +127,10 @@ if ($gpus_per_task_opt) {
 
 if ($help_opt) {
 	usage();
+}
+
+if ($job_name_opt) {
+    push @OPTIONS, "--job-name=$job_name_opt ";
 }
 
 if ($label_opt) {
@@ -170,10 +182,18 @@ if ($no_allocate_opt) {
 # decide what flux command to run based on the Slurm command and run it
 #
 if( $0 =~ /srun$/ ){
-    if( $verbose_opt ) {
-        print "# running: flux mini run @OPTIONS $commandLine\n";
+    my $minicmd = "flux mini run @OPTIONS $commandLine\n";
+    if( $jobid_opt ) {
+        if( $verbose_opt ){
+            print "# running: flux proxy $jobid_opt $minicmd\n";
+        }
+        system "flux proxy $jobid_opt $minicmd";
+    }else{
+        if( $verbose_opt ) {
+            print "# running: $minicmd\n";
+        }
+	    system "$minicmd";
     }
-	system("flux mini run @OPTIONS $commandLine");
 }elsif( $0 =~ /sbatch$/ ){
 	if ($scriptFile || $tempFile) {
 	    if ($scriptFile) {
@@ -183,17 +203,19 @@ if( $0 =~ /srun$/ ){
     	}
     	$command .= " $scriptArgs" if ($scriptArgs);
     }
+    my $minicmd = "flux mini batch @OPTIONS $command";
     if( $verbose_opt ) {
-        print "# running: flux mini batch @OPTIONS $command\n";
+        print "# running: $minicmd\n";
     }
-	system("flux mini batch @OPTIONS $command");
+	system "$minicmd";
 }elsif( $0 =~ /salloc$/ ){
+    my $minicmd = "flux mini alloc @OPTIONS $commandLine";
     if( $verbose_opt ) {
-        print "# running: flux mini alloc @OPTIONS $commandLine\n";
+        print "# running: $minicmd";
     }
-	system("flux mini alloc @OPTIONS $commandLine");
+	system "$minicmd";
 }else{
-    printf("flux mini COMMAND @OPTIONS $command\n");
+    print "flux mini COMMAND @OPTIONS $command\n";
 }
 
 exit;
@@ -291,16 +313,20 @@ sub GetOpts
     @ARGV = @tmpargv;
 
 	return GetOptions(
+        'A|account=s'       => \$account_opt,
         'b|begin=s'         => \$begin_opt,
 		'c|cpus-per-task=i'	=> \$cpus_per_task_opt,
 		'comment=s'        	=> \$comment_opt,
         'D|chdir=s'         => \$chdir_opt,
         'd|dependency=s'    => \$dependent_opt,
 		'e|error=s'        	=> \$error_opt,
+        'exclusive'         => \$exclusive_opt,
         'gpus-per-task=i'   => \$gpus_per_task_opt,
         'H|hold'            => \$hold_opt,
 		'h|help'         	=> \$help_opt,
         'i|input=s'         => \$input_opt,
+        'J|job-name=s'      => \$job_name_opt,
+        'jobid=s'           => \$jobid_opt,
         'l|label'         	=> \$label_opt,
 		'N|nodes=i'        	=> \$nodes_opt,
 		'n|ntasks=i'       	=> \$ntasks_opt,
@@ -327,16 +353,20 @@ sub usage
 
 OPTIONS
 =======
+-A|--account=<bank>         Use a non-default bank.
 -b|--begin=<datetime>       Ensure that job doesn't start until date/time.
 -c|cpus-per-task=<count>    Number of cpus per task.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
 -d|--dependency=<jobid>     Specify job that this job is dependent on
 -e|--error=<filename>       Path and file name for stderr data.
+--exclusive                 Reserve all node resources for this job.
 --gpus-per-task=<count>     Number of gpus per task.
 -H|--hold                   Submit job in a 'held' state.
 -h|--help                   List the available options.
 -i|--input=<filename>       Path and file name for stdin.
+-J|--job-name=<Name>        Job name.
+--jobid=<jobid>             Submit work to existing allocation.
 -l|--label                  Label IO with task tank prefixes.
 -N|--nodes=<count>          Number of nodes needed.
 -n|--ntasks=<count>         Number of tasks needed.
@@ -357,7 +387,6 @@ OPTIONS
 ########## not yet, might be needed later on.
 ##########
 #                'a|attach'        		=> \$attach_opt,
-#                'A|account=s'       		=> \$account_opt,
 #                'b|batch'         		=> \$batch_opt,
 #                'Bextra-node-info=s' 		=> \$vextra_node_al,
 #                'C|constraint=s'    		=> \$constraint_opt,
@@ -367,7 +396,6 @@ OPTIONS
 #		         'gpus-per-node:s'		=> \$gpus_per_node,
 #                'I|immediate:s'     		=> \$immediate_opt,
 #                'join=s'          		=> \$join_opt,
-#                'J|job-name=s'      		=> \$job_name_val,
 #                'k|no-kill'       		=> \$no_kill_opt,
 #                'K|kill-on-bad-exit:s' 		=> \$kill_on_bad_exit_opt,
 #                'L|licenses=s'      		=> \$licenses_opt,
@@ -396,7 +424,6 @@ OPTIONS
 #                'cpu_bind=s'         		=> \$cpu_bind_opt,
 #                'debugger-test'    		=> \$debugger_test_opt,
 #                'epilog=s'           		=> \$debugger_test_opt,
-#                'exclusive'        		=> \$exclusive_opt,
 #                'get-user-env=s'      		=> \$get_user_env_opt,
 #                'gid=s'              		=> \$gid_val,
 #                'gres=s'             		=> \$gres_opt,

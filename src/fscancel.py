@@ -1,0 +1,247 @@
+#!/bin/python3
+###############################################################
+# Copyright 2020 Lawrence Livermore National Security, LLC
+# (c.f. NOTICE.LLNS)
+#
+# SPDX-License-Identifier: LGPL-3.0
+###############################################################
+
+import argparse
+import flux
+import flux.job
+import sys
+
+
+class CustomHelpFormatter(argparse.HelpFormatter):
+    """
+    Create minimal argparse format to mimic that of Slurm.
+
+    See https://stackoverflow.com/a/31124505 for original answer to shortening
+    argparse's usage documentation.
+    """
+    def __init__(self, prog):
+        super().__init__(prog, max_help_position=40, width=80)
+
+    def _format_action_invocation(self, action):
+        if not action.option_strings or action.nargs == 0:
+            return super()._format_action_invocation(action)
+        default = self._get_default_metavar_for_optional(action)
+        args_string = self._format_args(action, default)
+        return ", ".join(action.option_strings) + " " + args_string
+
+
+def main(args):
+    """Handle the main command logic of scancel"""
+
+    # Don't print the wrapper announcement if the user requests quiet execution.
+    if not args.quiet:
+        print(
+            'WARNING: fscancel is a wrapper script for the native "flux job cancel" command.',
+            file=sys.stderr,
+        )
+
+    # If no job_id nor any filter options are given we should print an error
+    # to stderr and exit with a return node of 1 to mimic the behavior of
+    # scancel.
+    if args.job_id is None and not len(sys.argv) > 1:
+        print("scancel: error: No job identification provided", file=sys.stderr)
+        exit(1)
+
+    # Print version information and exit if requested.
+    if args.version:
+        print("TODO: add version info here")
+        exit(0)
+
+    # Set default signal code.
+    signal = 9
+
+    # Validate signal if given.
+    if args.signal is not None:
+        known_signals = {
+            "SIGHUP": 1,
+            "SIGINT": 2,
+            "SIGQUIT": 3,
+            "SIGABRT": 6,
+            "SIGKILL": 9,
+            "SIGALRM": 14,
+            "SIGTERM": 15,
+        }
+        # Validate signal from argument.
+        if isinstance(args.signal, int):
+            signal = int(args.signal)
+        elif args.signal.upper() in known_signals:
+            signal = known_signals[args.signal.upper()]
+        else:
+            print(f"Unknown job signal: {args.signal}", file=sys.stderr)
+            exit(1)
+
+    # Initialize connection to flux.
+    conn = flux.Flux()
+
+    # -------------------------------------------------------------------------
+    # Configure explicit job_id if given.
+    # -------------------------------------------------------------------------
+    # Set default job_ids as an empty list in the case a job_id is not explicitly
+    # extered as an argument.
+    job_ids = []
+
+    # Build job_id if given as an explicit argument.
+    if args.job_id is not None:
+        job_ids.append(flux.job.JobID(args.job_id))
+
+    # -------------------------------------------------------------------------
+    # Configure explicit job_states if given.
+    # -------------------------------------------------------------------------
+    # Set default job_states for search.
+    job_states = ["pending", "running"]
+
+    # Validate given job state.
+    if args.state is not None:
+        known_states = ["pending", "running"]
+        if args.state.lower() in known_states:
+            job_states = [args.state]
+        else:
+            print(f"Invalid job state specified: {args.state}", file=sys.stderr)
+            print("Valid job states are PENDING and RUNNING")
+            exit(1)
+
+    # -------------------------------------------------------------------------
+    # Query Flux for JobList
+    # -------------------------------------------------------------------------
+    # Retrieve jobs and attributes from flux.
+    rpc = flux.job.JobList(
+        conn, user=args.user, ids=job_ids, filters=job_states
+    ).fetch_jobs()
+    jobs = rpc.get_jobinfos()
+
+    # -------------------------------------------------------------------------
+    # Filter retrived jobs based on job properies and given arguments.
+    # -------------------------------------------------------------------------
+    # Filter so that all jobs are running on a node in args.nodelist if provided.
+    if args.nodelist is not None:
+        nodelist = [node.strip() for node in args.nodelist.split(",")]
+        jobs = [job for job in jobs if job.nodelist in nodelist]
+
+    # Filter so that all jobs have the name args.name if provided.
+    if args.name is not None:
+        jobs = [job for job in jobs if job.name == args.name]
+
+    # Filter so that all jobs are within the partition args.partition if provided.
+    if args.partition is not None:
+        jobs = [job for job in jobs if job.sched.queue == args.partition]
+
+    # -------------------------------------------------------------------------
+    # Cancel filtered jobs.
+    # -------------------------------------------------------------------------
+    for job in jobs:
+        # If interactive prompt for confirmation before cancelling any jobs.
+        if args.interactive:
+            answer = ""
+            while answer not in ["y", "n"]:
+                print(
+                    f"Cancel job_id={job.id.f58} name={job.name} partition={job.sched.queue} [y/n]?",
+                    end=" ",
+                )
+                answer = input().lower()
+            if answer == "n":
+                continue
+
+        # Send signal if args.signal is present, else default to cancel.
+        if args.signal is not None:
+            # Send signal to flux job.
+            flux.job.kill(conn, job.id, signum=signal)
+        else:
+            # Cancel a running job in flux.
+            flux.job.cancel(conn, job.id)
+
+
+if __name__ == "__main__":
+    fmt = lambda prog: CustomHelpFormatter(prog)
+    parser = argparse.ArgumentParser(
+        description="fscancel is a scancel like wrapper for Flux.", formatter_class=fmt
+    )
+
+    # parser.add_argument(
+    #    "-A",
+    #    "--account",
+    #    metavar="<account>",
+    #    help="act only on jobs charging this account",
+    # )
+    # parser.add_argument(
+    #    "-b",
+    #    "--batch",
+    #    action="store_true",
+    #    help="signal batch shell for specified job",
+    # )
+    # parser.add_argument(
+    #    "-f",
+    #    "--full",
+    #    action="store_true",
+    #    help="signal batch shell and all steps for specified job",
+    # )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="require response from user for each job",
+    )
+    parser.add_argument(
+        "-n", "--name", metavar="<job_name>", help="act only on jobs with this name"
+    )
+    parser.add_argument(
+        "-p",
+        "--partition",
+        metavar="<partition>",
+        help="act only on jobs in this partition",
+    )
+    parser.add_argument("-Q", "--quiet", action="store_true", help="disable warnings")
+    # parser.add_argument(
+    #    "-q",
+    #    "--qos",
+    #    metavar="<qos>",
+    #    help="act only on jobs with this quality of service",
+    # )
+    # parser.add_argument(
+    #    "-R",
+    #    "--reservation",
+    #    metavar="<reservation>",
+    #    help="act only on jobs with this reservation",
+    # )
+    parser.add_argument(
+        "-s",
+        "--signal",
+        metavar="<name>|<integer>",
+        nargs="?",
+        const=9,
+        help="signal to send to job, default is SIGKILL",
+    )
+    parser.add_argument(
+        "-t", "--state", metavar="<state>", help="act only on jobs in this state."
+    )
+    parser.add_argument(
+        "-u",
+        "--user",
+        metavar="<username>",
+        default="all",
+        help="act only on jobs of this user",
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="store_true",
+        help="output version information and exit",
+    )
+    # parser.add_argument("-v", "--verbose", metavar="<integer>", help="verbosity level")
+    parser.add_argument(
+        "-w",
+        "--nodelist",
+        metavar="<node_list>",
+        help="act only on jobs on these nodes",
+    )
+
+    # Add positional arguments.
+    parser.add_argument("job_id", metavar="job_id", nargs="?")
+
+    # Parse arguments and begin execution.
+    args = parser.parse_args()
+    main(args)

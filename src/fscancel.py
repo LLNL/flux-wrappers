@@ -107,7 +107,7 @@ def main(args):
             "pd": "pending",
         }
         if args.state.lower() in known_states.keys():
-            job_states = [known_states[args.state]]
+            job_states = [known_states[args.state.lower()]]
         else:
             print(f"Invalid job state specified: {args.state}", file=sys.stderr)
             print("Valid job states are PENDING and RUNNING")

@@ -10,6 +10,7 @@ import argparse
 import flux
 import flux.job
 import sys
+import os
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -19,6 +20,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     See https://stackoverflow.com/a/31124505 for original answer to shortening
     argparse's usage documentation.
     """
+
     def __init__(self, prog):
         super().__init__(prog, max_help_position=40, width=80)
 
@@ -97,20 +99,37 @@ def main(args):
 
     # Validate given job state.
     if args.state is not None:
-        known_states = ["pending", "running"]
-        if args.state.lower() in known_states:
-            job_states = [args.state]
+        # Load dictionary of known states and their aliases.
+        known_states = {
+            "running": "running",
+            "r": "running",
+            "pending": "pending",
+            "pd": "pending",
+        }
+        if args.state.lower() in known_states.keys():
+            job_states = [known_states[args.state]]
         else:
             print(f"Invalid job state specified: {args.state}", file=sys.stderr)
             print("Valid job states are PENDING and RUNNING")
             exit(1)
 
     # -------------------------------------------------------------------------
+    # Configure user for command scope
+    # -------------------------------------------------------------------------
+    user = os.getlogin()
+
+    if args.user is not None:
+        user = args.user
+
+    if user == "root":
+        user = "all"
+
+    # -------------------------------------------------------------------------
     # Query Flux for JobList
     # -------------------------------------------------------------------------
     # Retrieve jobs and attributes from flux.
     rpc = flux.job.JobList(
-        conn, user=args.user, ids=job_ids, filters=job_states
+        conn, user=user, ids=job_ids, filters=job_states
     ).fetch_jobs()
     jobs = rpc.get_jobinfos()
 
@@ -146,13 +165,21 @@ def main(args):
             if answer == "n":
                 continue
 
-        # Send signal if args.signal is present, else default to cancel.
-        if args.signal is not None:
-            # Send signal to flux job.
-            flux.job.kill(conn, job.id, signum=signal)
-        else:
-            # Cancel a running job in flux.
-            flux.job.cancel(conn, job.id)
+        try:
+            # Send signal if args.signal is present, else default to cancel.
+            if args.signal is not None:
+                # Send signal to flux job.
+                flux.job.kill(conn, job.id, signum=signal)
+            else:
+                # Cancel a running job in flux.
+                flux.job.cancel(conn, job.id)
+
+        # Print error to user if they don't have permission to cancel a job.
+        except PermissionError:
+            print(
+                f"scancel: error: Kill job error on job id {job.id}: Access/permission denied",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":
@@ -222,7 +249,6 @@ if __name__ == "__main__":
         "-u",
         "--user",
         metavar="<username>",
-        default="all",
         help="act only on jobs of this user",
     )
     parser.add_argument(

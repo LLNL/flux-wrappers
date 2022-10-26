@@ -45,7 +45,7 @@ def main(args):
     # If no job_id nor any filter options are given we should print an error
     # to stderr and exit with a return node of 1 to mimic the behavior of
     # scancel.
-    if args.job_id is None and not len(sys.argv) > 1:
+    if len(args.job_id) < 1 and not len(sys.argv) > 1:
         print("scancel: error: No job identification provided", file=sys.stderr)
         exit(1)
 
@@ -88,8 +88,8 @@ def main(args):
     job_ids = []
 
     # Build job_id if given as an explicit argument.
-    if args.job_id is not None:
-        job_ids.append(flux.job.JobID(args.job_id))
+    for id in args.job_id:
+        job_ids.append(flux.job.JobID(id))
 
     # -------------------------------------------------------------------------
     # Configure explicit job_states if given.
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     )
 
     # Add positional arguments.
-    parser.add_argument("job_id", metavar="job_id", nargs="?")
+    parser.add_argument("job_id", metavar="job_id", nargs="*")
 
     # Parse arguments and begin execution.
     args = parser.parse_args()

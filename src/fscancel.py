@@ -165,7 +165,7 @@ def main(args):
 
     # Catch the case where no jobs made it through the filters and tell the
     # user on verbose output.
-    if args.verbose and len(jobs) < 1:
+    if args.verbose and len(list(jobs)) < 1:
         print(
             "scancel: error: No active jobs match ALL job filters, including:",
             end=" ",

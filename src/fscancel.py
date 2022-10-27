@@ -142,7 +142,7 @@ def main(args):
     rpc = flux.job.JobList(
         conn, user=user, ids=job_ids, filters=job_states
     ).fetch_jobs()
-    jobs = rpc.get_jobinfos()
+    jobs = list(rpc.get_jobinfos())
 
     # -------------------------------------------------------------------------
     # Filter retrived jobs based on job properies and given arguments.
@@ -165,7 +165,7 @@ def main(args):
 
     # Catch the case where no jobs made it through the filters and tell the
     # user on verbose output.
-    if args.verbose and len(list(jobs)) < 1:
+    if args.verbose and len(jobs) < 1:
         print(
             "scancel: error: No active jobs match ALL job filters, including:",
             end=" ",

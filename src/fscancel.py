@@ -33,7 +33,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 
 def main(args):
-    """Handle the main command logic of scancel"""
+    """Handle the main command logic of scancel."""
 
     # Don't print the wrapper announcement if the user requests quiet execution.
     if not args.quiet:
@@ -51,7 +51,7 @@ def main(args):
 
     # Print version information and exit if requested.
     if args.version:
-        print("TODO: add version info here")
+        print("flux-wrappers 0.0.0")
         exit(0)
 
     # Set default signal code.
@@ -87,6 +87,10 @@ def main(args):
     # extered as an argument.
     job_ids = []
 
+    # Set default job_filters as an dictionary list that will be appended to
+    # based on the presence of different filters.
+    job_filters = {}
+
     # Build job_id if given as an explicit argument.
     for id in args.job_id:
         job_ids.append(flux.job.JobID(id))
@@ -108,6 +112,7 @@ def main(args):
         }
         if args.state.lower() in known_states.keys():
             job_states = [known_states[args.state.lower()]]
+            filters["state"] = ",".join(job_states)
         else:
             print(f"Invalid job state specified: {args.state}", file=sys.stderr)
             print("Valid job states are PENDING and RUNNING")
@@ -116,13 +121,19 @@ def main(args):
     # -------------------------------------------------------------------------
     # Configure user for command scope
     # -------------------------------------------------------------------------
+    # By default set the user based on the user executing the command.
     user = os.getlogin()
 
+    # Overwrite default user if explicitly specified.
     if args.user is not None:
         user = args.user
 
+    # Translate root to 'all' scope for flux compatibility.
     if user == "root":
         user = "all"
+
+    # Add user to filters for verbose output.
+    job_filters["user"] = user
 
     # -------------------------------------------------------------------------
     # Query Flux for JobList
@@ -140,14 +151,32 @@ def main(args):
     if args.nodelist is not None:
         nodelist = [node.strip() for node in args.nodelist.split(",")]
         jobs = [job for job in jobs if job.nodelist in nodelist]
+        job_filters["nodelist"] = ",".join(nodelist)
 
     # Filter so that all jobs have the name args.name if provided.
     if args.name is not None:
         jobs = [job for job in jobs if job.name == args.name]
+        job_filters["name"] = args.name
 
     # Filter so that all jobs are within the partition args.partition if provided.
     if args.partition is not None:
         jobs = [job for job in jobs if job.sched.queue == args.partition]
+        job_filters["partition"] = args.partition
+
+    # Catch the case where no jobs made it through the filters and tell the
+    # user on verbose output.
+    if args.verbose and len(jobs) < 1:
+        print(
+            "scancel: error: No active jobs match ALL job filters, including:",
+            end=" ",
+            file=sys.stderr,
+        )
+        print(
+            ",".join(
+                [f"{filter}={job_filters[filter]}" for filter in job_filters.keys()]
+            ),
+            file=sys.stderr,
+        )
 
     # -------------------------------------------------------------------------
     # Cancel filtered jobs.
@@ -180,6 +209,12 @@ def main(args):
                 f"scancel: error: Kill job error on job id {job.id}: Access/permission denied",
                 file=sys.stderr,
             )
+        except FileNotFoundError:
+            if args.verbose:
+                print(
+                    f"scancel: error: Kill job error on job id {job.id}: Invalid job id specified",
+                    file=sys.stderr,
+                )
 
 
 if __name__ == "__main__":
@@ -243,7 +278,7 @@ if __name__ == "__main__":
         help="signal to send to job, default is SIGKILL",
     )
     parser.add_argument(
-        "-t", "--state", metavar="<state>", help="act only on jobs in this state."
+        "-t", "--state", metavar="<state>", help="act only on jobs in this state"
     )
     parser.add_argument(
         "-u",
@@ -257,7 +292,9 @@ if __name__ == "__main__":
         action="store_true",
         help="output version information and exit",
     )
-    # parser.add_argument("-v", "--verbose", metavar="<integer>", help="verbosity level")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="show verbose output"
+    )
     parser.add_argument(
         "-w",
         "--nodelist",

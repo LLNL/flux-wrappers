@@ -144,7 +144,7 @@ if ($label_opt) {
     push @OPTIONS, "--label-io ";
 }
 
-if ($mpibind_opt and $0 eq 'srun' or $0 eq 'slurm2flux') {
+if ($mpibind_opt and $0 eq 'srun' or $0 =~ /slurm2flux/) {
     if( $mpibind_opt eq 'off' ){
         unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
             push @OPTIONS, "-o cpu-affinity=per-task ";
@@ -265,7 +265,7 @@ if( $0 =~ /salloc$/ ){
         }
     }else{
         if( $jobid_opt ){
-            printf("flux proxy $jobid_opt flux mini [run|alloc|batch] @OPTIONS $commandLine\n";
+            printf("flux proxy $jobid_opt flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
         }else{
             printf("flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
         }
@@ -353,7 +353,7 @@ sub processMpibind
         }elsif( $mpibindopt eq "greedy" ){
             $mpibindopt = "greedy:1";
         }elsif( $mpibindopt =~/^smt(\d+)$/ and my $nsmt = $1 ){
-            $mpidbindopt = "smt:$nsmt";
+            $mpibindopt = "smt:$nsmt";
         }
         $retstr .="-o mpibind=$mpibindopt ";
     }

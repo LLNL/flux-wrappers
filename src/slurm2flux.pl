@@ -94,8 +94,16 @@ if ($cores_opt) {
     push @OPTIONS, "--cores=$cores_opt ";
 }
 
+if ($ntasks_per_core_opt and 
+    ($cores_opt or ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt)) and 
+    !$cpus_per_task_opt and !$ntasks_opt
+    ) {
+    push @OPTIONS, "--tasks-per-core=$ntasks_per_core_opt ";
+}
+
 if ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt){
     push @OPTIONS, "--cores=".$cores_per_socket_opt*$sockets_per_node_opt*$nodes_opt." ";
+    $nodes_opt = '';
 }
 
 if ($cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no')) {
@@ -122,7 +130,9 @@ if ($flux_debug_opt) {
 	push @OPTIONS, "--debug ";
 }
 
-if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and $0 =~ /srun/ ){
+if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and 
+     !$ntasks_per_core_opt and !$ntasks_per_node_opt and
+     $0 =~ /srun$/ ){
     push @OPTIONS, "--exclusive ";
 }
 
@@ -156,7 +166,7 @@ if ($label_opt) {
     push @OPTIONS, "--label-io ";
 }
 
-if ($mpibind_opt and $0 eq 'srun' or $0 =~ /slurm2flux/) {
+if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
     if( $mpibind_opt eq 'off' ){
         unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
             push @OPTIONS, "--setopt=cpu-affinity=per-task ";
@@ -172,13 +182,6 @@ if ($ntasks_opt) {
 	push @OPTIONS, "-n $ntasks_opt ";
 }
 
-if ($ntasks_per_core_opt and 
-    ($cores_opt or ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt)) and 
-    !$cpus_per_task_opt and !$ntasks_opt
-    ) {
-    push @OPTIONS, "--tasks-per-core=$ntasks_per_core_opt ";
-}
-
 if ($ntasks_per_node_opt and $nodes_opt and !$cpus_per_task_opt and !$ntasks_opt) {
     push @OPTIONS, "--tasks-per-node=$ntasks_per_node_opt ";
 }
@@ -187,7 +190,7 @@ if ($nodes_opt) {
 	push @OPTIONS, "--nodes=$nodes_opt ";
 }
 
-if ($no_shell_opt and $0 =~ /salloc/) {
+if ($no_shell_opt and $0 =~ /salloc$/) {
     push @OPTIONS, "--bg ";
 }
 
@@ -212,7 +215,7 @@ if ($hold_opt) {
     push @OPTIONS, "--urgency=0 ";
 }
 
-if ($verbose_opt and $0 !~ /sbatch/) {
+if ($verbose_opt and $0 !~ /sbatch$/) {
 	push @OPTIONS, "--verbose ";
 }
 
@@ -258,7 +261,8 @@ if( $0 =~ /salloc$/ ){
     	system("flux --parent mini batch @OPTIONS $command");
     }
 }else{
-    if( !$cpus_per_task_opt and !$gpus_per_task_opt ){
+    if( !$cpus_per_task_opt and !$gpus_per_task_opt and
+        !$ntasks_per_core_opt and !$ntasks_per_node_opt ){
         push @OPTIONS, "--exclusive ";
         if( !$nodes_opt ){
             unless( $ntasks_opt ){

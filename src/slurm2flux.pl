@@ -130,11 +130,11 @@ if ($flux_debug_opt) {
 	push @OPTIONS, "--debug ";
 }
 
-if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and 
-     !$ntasks_per_core_opt and !$ntasks_per_node_opt and
-     $0 =~ /srun$/ ){
-    push @OPTIONS, "--exclusive ";
-}
+#if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and 
+#     !$ntasks_per_core_opt and !$ntasks_per_node_opt and
+#     $0 =~ /srun$/ ){
+#    push @OPTIONS, "--exclusive ";
+#}
 
 if ($exclusive_opt) {
     if( !$cpus_per_task_opt and !$gpus_per_task_opt ){
@@ -268,11 +268,15 @@ if( $0 =~ /salloc$/ ){
             unless( $ntasks_opt ){
                 $ntasks_opt = 1;
             }
-            if( $jobid_opt ){
+            if( $jobid_opt ){   # flux proxy job
                 $nodes_opt = min($ntasks_opt, `flux jobs -n -o '{nnodes}' $jobid_opt`);
-            }elsif( $ENV{"FLUX_JOB_NNODES"} ){
+                chomp $nodes_opt;
+            }elsif( $ENV{"FLUX_JOB_NNODES"} ){   # in a flux job (run,submit)
                 $nodes_opt = min($ntasks_opt, $ENV{"FLUX_JOB_NNODES"});
-            }elsif( $ntasks_opt ){
+            }elsif( $ENV{"FLUX_URI"} ){    # in a flux instance (alloc,batch)
+                $nodes_opt = min($ntasks_opt, `flux resource info | awk '{print \$1}'`);
+                chomp $nodes_opt;
+            }elsif( $ntasks_opt ){   # outside of a flux job
                 $nodes_opt = $ntasks_opt;
             }
             push @OPTIONS, "--nodes=$nodes_opt ";

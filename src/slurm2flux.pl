@@ -11,7 +11,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpu_bind_opt, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $mpibind_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node_opt, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -90,6 +90,26 @@ if ($comment_opt) {
 	push @OPTIONS, "--setattr=user.comment='$comment_opt' ";
 }
 
+if ($cores_opt) {
+    push @OPTIONS, "--cores=$cores_opt ";
+}
+
+if ($ntasks_per_core_opt and 
+    ($cores_opt or ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt)) and 
+    !$cpus_per_task_opt and !$ntasks_opt
+    ) {
+    push @OPTIONS, "--tasks-per-core=$ntasks_per_core_opt ";
+}
+
+if ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt){
+    push @OPTIONS, "--cores=".$cores_per_socket_opt*$sockets_per_node_opt*$nodes_opt." ";
+    $nodes_opt = '';
+}
+
+if ($cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no')) {
+    push @OPTIONS, "--setopt=cpu-affinity=off";
+}
+
 if ($cpus_per_task_opt) {
     push @OPTIONS, "-c $cpus_per_task_opt ";
 }
@@ -110,9 +130,11 @@ if ($flux_debug_opt) {
 	push @OPTIONS, "--debug ";
 }
 
-if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and $0 =~ /srun/ ){
-    push @OPTIONS, "--exclusive ";
-}
+#if ( !$exact_opt and !$cpus_per_task_opt and !$gpus_per_task_opt and 
+#     !$ntasks_per_core_opt and !$ntasks_per_node_opt and
+#     $0 =~ /srun$/ ){
+#    push @OPTIONS, "--exclusive ";
+#}
 
 if ($exclusive_opt) {
     if( !$cpus_per_task_opt and !$gpus_per_task_opt ){
@@ -122,6 +144,14 @@ if ($exclusive_opt) {
 
 if ($input_opt) {
     push @OPTIONS, "--input=$input_opt ";
+}
+
+if ($gpu_bind_opt and ($gpu_bind_opt eq 'none' or $gpu_bind_opt eq 'no')) {
+    push @OPTIONS, "--setopt=gpu-affinity=off ";
+}
+
+if ($gpus_per_node_opt and !$gpus_per_task_opt) {
+    push @OPTIONS, "--gpus-per-node=".processGpuNode($gpus_per_node_opt)." ";
 }
 
 if ($gpus_per_task_opt) {
@@ -136,15 +166,31 @@ if ($label_opt) {
     push @OPTIONS, "--label-io ";
 }
 
+if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
+    if( $mpibind_opt eq 'off' ){
+        unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
+            push @OPTIONS, "--setopt=cpu-affinity=per-task ";
+        }
+        unless( $gpu_bind_opt and ($gpu_bind_opt eq 'none' or $gpu_bind_opt eq 'no') ){
+            push @OPTIONS, "--setopt=gpu-affinity=per-task ";
+        }
+    }
+    push @OPTIONS, processMpibind($mpibind_opt);
+}
+
 if ($ntasks_opt) {
 	push @OPTIONS, "-n $ntasks_opt ";
 }
 
-if ($nodes_opt) {
-	push @OPTIONS, "-N $nodes_opt ";
+if ($ntasks_per_node_opt and $nodes_opt and !$cpus_per_task_opt and !$ntasks_opt) {
+    push @OPTIONS, "--tasks-per-node=$ntasks_per_node_opt ";
 }
 
-if ($no_shell_opt and $0 =~ /salloc/) {
+if ($nodes_opt) {
+	push @OPTIONS, "--nodes=$nodes_opt ";
+}
+
+if ($no_shell_opt and $0 =~ /salloc$/) {
     push @OPTIONS, "--bg ";
 }
 
@@ -162,15 +208,15 @@ if ($priority_opt=~/^\d+$/) {
 
 if ($time_opt) {
 	my $time = timeToSeconds($time_opt);
-	push @OPTIONS, "-t $time ";
+	push @OPTIONS, "--time-limit=$time ";
 }
 
 if ($hold_opt) {
     push @OPTIONS, "--urgency=0 ";
 }
 
-if ($verbose_opt and $0 !~ /sbatch/) {
-	push @OPTIONS, "-v ";
+if ($verbose_opt and $0 !~ /sbatch$/) {
+	push @OPTIONS, "--verbose ";
 }
 
 if ($wrap_opt) {
@@ -184,31 +230,11 @@ if ($no_allocate_opt) {
 #
 # decide what flux command to run based on the Slurm command and run it
 #
-if( $0 =~ /srun$/ ){
+if( $0 =~ /salloc$/ ){
     if( $verbose_opt ) {
-        print "# running: flux mini run @OPTIONS $commandLine\n";
+        print "# running: flux --parent mini alloc @OPTIONS $commandLine\n";
     }
-    if( !$cpus_per_task_opt and !$gpus_per_task_opt ){
-        push @OPTIONS, "--exclusive ";
-        if( !$nodes_opt ){
-            unless( $ntasks_opt ){
-                $ntasks_opt = 1;
-            }
-            if( $jobid_opt ){
-                $nodes_opt = min($ntasks_opt, `flux jobs -n -o '{nnodes}' $jobid_opt`);
-            }elsif( $ENV{"FLUX_JOB_NNODES"} ){
-                $nodes_opt = min($ntasks_opt, $ENV{"FLUX_JOB_NNODES"});
-            }elsif( $ntasks_opt ){
-                $nodes_opt = $ntasks_opt;
-            }
-            push @OPTIONS, "-N $nodes_opt ";
-        }
-    }
-    if( $jobid_opt ) {
-        system("flux proxy $jobid_opt flux mini run @OPTIONS $commandLine");
-    }else{
-	    system("flux mini run @OPTIONS $commandLine");
-    }
+	system("flux --parent mini alloc @OPTIONS $commandLine");
 }elsif( $0 =~ /sbatch$/ ){
 	if ($scriptFile || $tempFile) {
 	    if ($scriptFile) {
@@ -234,13 +260,47 @@ if( $0 =~ /srun$/ ){
     }else{
     	system("flux --parent mini batch @OPTIONS $command");
     }
-}elsif( $0 =~ /salloc$/ ){
-    if( $verbose_opt ) {
-        print "# running: flux --parent mini alloc @OPTIONS $commandLine\n";
-    }
-	system("flux --parent mini alloc @OPTIONS $commandLine");
 }else{
-    printf("flux mini COMMAND @OPTIONS $command\n");
+    if( !$cpus_per_task_opt and !$gpus_per_task_opt and
+        !$ntasks_per_core_opt and !$ntasks_per_node_opt ){
+        push @OPTIONS, "--exclusive ";
+        if( !$nodes_opt ){
+            unless( $ntasks_opt ){
+                $ntasks_opt = 1;
+            }
+            if( $jobid_opt ){   # flux proxy job
+                $nodes_opt = min($ntasks_opt, `flux jobs -n -o '{nnodes}' $jobid_opt`);
+                chomp $nodes_opt;
+            }elsif( $ENV{"FLUX_JOB_NNODES"} ){   # in a flux job (run,submit)
+                $nodes_opt = min($ntasks_opt, $ENV{"FLUX_JOB_NNODES"});
+            }elsif( $ENV{"FLUX_URI"} ){    # in a flux instance (alloc,batch)
+                $nodes_opt = min($ntasks_opt, `flux resource info | awk '{print \$1}'`);
+                chomp $nodes_opt;
+            }elsif( $ntasks_opt ){   # outside of a flux job
+                $nodes_opt = $ntasks_opt;
+            }
+            push @OPTIONS, "--nodes=$nodes_opt ";
+        }
+    }
+    if( $0 =~ /srun$/ ){
+        if( $jobid_opt ) {
+            if( $verbose_opt ) {
+                print "# running: flux proxy $jobid_opt flux mini run @OPTIONS $commandLine\n";
+            }
+            system("flux proxy $jobid_opt flux mini run @OPTIONS $commandLine");
+        }else{
+            if( $verbose_opt ) {
+                print "# running: flux mini run @OPTIONS $commandLine\n";
+            }
+	        system("flux mini run @OPTIONS $commandLine");
+        }
+    }else{
+        if( $jobid_opt ){
+            printf("flux proxy $jobid_opt flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
+        }else{
+            printf("flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
+        }
+    }
 }
 
 exit;
@@ -270,7 +330,7 @@ sub timeToSeconds
 
 	my @req = split /:|-/, $duration;
 	if ($duration =~ /^(\d+)$/) {
-	        $seconds = $duration;
+	        $seconds = $duration*60;
 	} else {
 	        my $inc;
 	        $seconds = pop(@req);
@@ -307,6 +367,37 @@ sub processDepend
         }
     }else{
         $retstr = "--dependency=afterany:$dependstr ";
+    }
+    return $retstr;
+}
+
+#
+# strip out gpu type info
+#
+sub processGpuNode
+{
+    my ($gpustr) = @_;
+    my $retstr = 0;
+    $gpustr =~ /(\d+)$/ and $retstr = $1;
+    return $retstr;
+}
+
+#
+# translate Slurm style mpibind args to Flux style
+#
+sub processMpibind
+{
+    my ($mpibindstr) = @_;
+    my $retstr = '';
+    foreach my $mpibindopt ( split /,/, $mpibindstr ){
+        if( $mpibindopt eq "verbose" or $mpibindopt eq "v" ){
+            $mpibindopt = "verbose:1";
+        }elsif( $mpibindopt eq "greedy" ){
+            $mpibindopt = "greedy:1";
+        }elsif( $mpibindopt =~/^smt(\d+)$/ and my $nsmt = $1 ){
+            $mpibindopt = "smt:$nsmt";
+        }
+        $retstr .="--setopt=mpibind=$mpibindopt ";
     }
     return $retstr;
 }
@@ -413,32 +504,41 @@ sub GetOpts
     @ARGV = @tmpargv;
 
 	return GetOptions(
-        'b|begin=s'         => \$begin_opt,
-		'c|cpus-per-task=i'	=> \$cpus_per_task_opt,
-		'comment=s'        	=> \$comment_opt,
-        'D|chdir=s'         => \$chdir_opt,
-        'd|dependency=s'    => \$dependent_opt,
-		'e|error=s'        	=> \$error_opt,
-        'exact'             => \$exact_opt,
-        'exclusive'         => \$exclusive_opt,
-        'gpus-per-task=i'   => \$gpus_per_task_opt,
-        'H|hold'            => \$hold_opt,
-		'h|help'         	=> \$help_opt,
-        'i|input=s'         => \$input_opt,
-        'jobid=s'           => \$jobid_opt,
-        'l|label'         	=> \$label_opt,
-		'N|nodes=i'        	=> \$nodes_opt,
-		'n|ntasks=i'       	=> \$ntasks_opt,
-		'nice=i'         	=> \$priority_opt,
-        'no-shell'          => \$no_shell_opt,
-		'o|output=s'       	=> \$output_opt,
-        'p|partition=s'    	=> \$partition_opt,
-		'slurmd-debug=s'   	=> \$flux_debug_opt,
-		't|time=s'         	=> \$time_opt,
-		'v|verbose'       	=> \$verbose_opt,
-        'wait'              => \$wait_opt,
-        'wrap=s'            => \$wrap_opt,
-		'Z|no-allocate'   	=> \$no_allocate_opt,
+        'b|begin=s'              => \$begin_opt,
+		'c|cpus-per-task=i'	     => \$cpus_per_task_opt,
+        'cpu-bind=s'             => \$cpu_bind_opt,
+		'comment=s'        	     => \$comment_opt,
+        'cores=i'                => \$cores_opt,
+        'cores-per-socket=i'     => \$cores_per_socket_opt,
+        'D|chdir=s'              => \$chdir_opt,
+        'd|dependency=s'         => \$dependent_opt,
+		'e|error=s'        	     => \$error_opt,
+        'exact'                  => \$exact_opt,
+        'exclusive'              => \$exclusive_opt,
+        'gpu-bind=s'             => \$gpu_bind_opt,
+        'gpus-per-node=s'        => \$gpus_per_node_opt,
+        'gpus-per-task=i'        => \$gpus_per_task_opt,
+        'H|hold'                 => \$hold_opt,
+		'h|help'         	     => \$help_opt,
+        'i|input=s'              => \$input_opt,
+        'jobid=s'                => \$jobid_opt,
+        'l|label'         	     => \$label_opt,
+        'mpibind=s'              => \$mpibind_opt,
+		'nice=i'         	     => \$priority_opt,
+		'N|nodes=i'        	     => \$nodes_opt,
+		'n|ntasks=i'       	     => \$ntasks_opt,
+        'ntasks-per-core=i'      => \$ntasks_per_core_opt,
+        'ntasks-per-node=i'      => \$ntasks_per_node_opt,
+        'no-shell'               => \$no_shell_opt,
+		'o|output=s'       	     => \$output_opt,
+        'p|partition=s'    	     => \$partition_opt,
+		'slurmd-debug=s'   	     => \$flux_debug_opt,
+        'sockets-per-node=i'     => \$sockets_per_node_opt,
+		't|time=s'         	     => \$time_opt,
+		'v|verbose'       	     => \$verbose_opt,
+        'wait'                   => \$wait_opt,
+        'wrap=s'                 => \$wrap_opt,
+		'Z|no-allocate'   	     => \$no_allocate_opt,
 	);
 }
 
@@ -455,26 +555,35 @@ sub usage
 OPTIONS
 =======
 -b|--begin=<datetime>       Ensure that job doesn't start until date/time.
+--cores=<count>             Number of cores for job.
+--cores-per-socket=<count>  Number of cores per socket (must also use --sockets-per-node and --nodes).
 -c|cpus-per-task=<count>    Number of cpus per task.
+--cpu-bind=none             Turn off native cpu binding.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
 -d|--dependency=<jobid>     Specify job that this job is dependent on.
 -e|--error=<filename>       Path and file name for stderr data.
 --exact                     Use minimal resources required for ntasks.
 --exclusive                 Allocate whole nodes to job.
+--gpu-bind=none             Turn off native gpu binding.
+--gpus-per-node=<count>     Number of gpus per node.
 --gpus-per-task=<count>     Number of gpus per task.
 -H|--hold                   Submit job in a 'held' state.
 -h|--help                   List the available options.
 -i|--input=<filename>       Path and file name for stdin.
 --jobid=<jobid>             Run under an existing allocation (srun only).
 -l|--label                  Label IO with task tank prefixes.
+--mpibind=<option>          Options for mpibind pluging.
 -N|--nodes=<count>          Number of nodes needed.
 -n|--ntasks=<count>         Number of tasks needed.
+--ntasks-per-core=<count>   Run <count> tasks on each core.
+--ntasks-per-node=<count>   Run <count> tasks on each node.
 --no-shell                  Just get an allocation and don't run anything (salloc only).
 --nice=<number>             User defined priority.
 -o|--output=<filename>      Path and file name for stdout data.
 -p|--partion=<partition>    Partition or queue to submit job to.
 --slurmd-debug=<level>      Debugging added.
+--sockets-per-node=<count>  Number of sockets per node (must also use --cores-per-socket and --nodes).
 -t|--time=<timelimit>       Wall time of job.
 -v|-verbose                 Give more messages.
 --wait                      Do not return until job completes.
@@ -496,7 +605,6 @@ OPTIONS
 #                'E|preserve-env'  		=> \$preserve_opt,
 #                'E|preserve-flux-env' 		=> \$preserve_opt,
 #                'G|geometry=s'      		=> \$geometry_opt,
-#		         'gpus-per-node:s'		=> \$gpus_per_node,
 #                'I|immediate:s'     		=> \$immediate_opt,
 #                'join=s'          		=> \$join_opt,
 #                'J|job-name=s'      		=> \$job_name_val,
@@ -524,8 +632,6 @@ OPTIONS
 #                'checkpoint=s'       		=> \$checkpoint_opt,
 #                'checkpoint-dir=s'   		=> \$checkpoint_dir_opt,
 #                'cnload-image=s'     		=> \$cnloab_image_opt,
-#                'cores-per-socket=s' 		=> \$cores_per_socket_opt,
-#                'cpu_bind=s'         		=> \$cpu_bind_opt,
 #                'debugger-test'    		=> \$debugger_test_opt,
 #                'epilog=s'           		=> \$debugger_test_opt,
 #                'get-user-env=s'      		=> \$get_user_env_opt,
@@ -542,18 +648,12 @@ OPTIONS
 #                'mem=s'              		=> \$mem_opt,
 #                'mem-per-cpu=s'      		=> \$mem_per_cpu_opt,
 #                'mem_bind=s'         		=> \$mem_bind_opt,
-#                'mincores=s'         		=> \$mincores_opt,
-#                'mincpus=s'          		=> \$mincpus_opt,
-#                'minsockets=s'       		=> \$minsockets_opt,
-#                'minthreads=s'       		=> \$minthreads_opt,
 #                'mloader-image=s'    		=> \$mloaver_image_opt,
 #                'mpi=s'              		=> \$mpi_opt,
 #                'msg-timeout=s'      		=> \$msg_timeout_opt,
 #                'multi-prog'       		=> \$multi_prog_opt,
 #                'network=s'          		=> \$network_opt,
 #                'nice:s'              		=> \$nice_opt,
-#                'ntasks-per-core=s'  		=> \$ntasks_per_core_opt,
-#                'ntasks-per-node=s'  		=> \$ntasks_per_node,
 #                'ntasks-per-socket=s'		=> \$ntasks_per_socket_opt,
 #                'open-mode=s'        		=> \$open_mode_opt,
 #                'prolog=s'           		=> \$prolog_opt,
@@ -566,7 +666,6 @@ OPTIONS
 #                'restart-dir=s'      		=> \$restarert_dir_opt,
 #                'resv-ports:s'        		=> \$resv_ports_opt,
 #                'signal=s'           		=> \$signal_opt,
-#                'sockets-per-node=s' 		=> \$sockets_per_node_opt,
 #                'task-epilog=s'      		=> \$task_epilog_opt,
 #                'task-prolog=s'      		=> \$task_prolog_opt,
 #                'tasks-per-node=s'   		=> \$tasks_per_node_opt,

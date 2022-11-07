@@ -12,27 +12,27 @@ import flux.job as fjob
 from flux.hostlist import Hostlist
 
 def print_argwarn(argval) :
-	'''
-	print a warning for unsupported arguments
-	'''
-	print(f'WARNING: "{argval}" is not supported by this wrapper and is being ignored.')
-	print('WARNING: fsqueue is a wrapper script for the native "flux jobs" command.')
-	print('See "flux help jobs" or contact the LC Hotline for help using the native commands.') 
-	return None
+    '''
+    print a warning for unsupported arguments
+    '''
+    print(f'WARNING: "{argval}" is not supported by this wrapper and is being ignored.')
+    print('WARNING: fsqueue is a wrapper script for the native "flux jobs" command.')
+    print('See "flux help jobs" or contact the LC Hotline for help using the native commands.')
+    return None
 
 def parse_time(time) :
-	'''
-	turn a bunch of seconds into something human readable
-	'''
-	itime = int(time)
-	seconds = itime % 60
-	mtime = int( itime / 60 )
-	minutes = mtime % 60
-	htime = int( mtime / 60 )
-	if htime > 0 :
-		return f"{htime}:{minutes:02}:{seconds:02}"
-	else :
-		return f"{minutes:02}:{seconds:02}"
+    '''
+    turn a bunch of seconds into something human readable
+    '''
+    itime = int(time)
+    seconds = itime % 60
+    mtime = int( itime / 60 )
+    minutes = mtime % 60
+    htime = int( mtime / 60 )
+    if htime > 0 :
+        return f"{htime}:{minutes:02}:{seconds:02}"
+    else :
+        return f"{minutes:02}:{seconds:02}"
 
 def filter_byhostlist(j, jobfilter) :
     '''
@@ -46,35 +46,35 @@ def filter_byhostlist(j, jobfilter) :
     return filtered_jobs
 
 def get_queuestring(sched) :
-	'''
-	parse sched from flux to get queue
-	'''
-	return f"{sched.queue}"
+    '''
+    parse sched from flux to get queue
+    '''
+    return f"{sched.queue}"
 
 def printsqueueheader() :
-	'''
-	print header for output
-	'''
-	print("               JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)")
+    '''
+    print header for output
+    '''
+    print("               JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)")
 
 def printsqueue(j, alljobs=False) :
-	'''
-	print one job
-	'''
-	jobdone = False
-	if j.status_abbrev == "CD" or \
-	   j.status_abbrev == "CA" or \
-	   j.status_abbrev == "TO" or \
-	   j.status_abbrev == "F" :
-		jobdone = True
-	if alljobs == True or jobdone == False :
-		remstring = parse_time(j.t_remaining)
-		reasonnode = j.sched.reason_pending
-		if f"{j.sched.reason_pending}" == "" :
-			reasonnode=j.nodelist
-		partition = get_queuestring(j.sched)
-		print(f"         {j.id.f58:>10} {partition:>9} {j.name:>8.8} {j.username:>8} {j.status_abbrev:>2} {remstring:>10} {j.nnodes:>6} {reasonnode}")
-#		print(f"         {j.id} partition {j.name} {j.username} {j.status_abbrev} {j.t_remaining} {j.nnodes} {j.sched.reason_pending}")
+    '''
+    print one job
+    '''
+    jobdone = False
+    if j.status_abbrev == "CD" or \
+       j.status_abbrev == "CA" or \
+       j.status_abbrev == "TO" or \
+       j.status_abbrev == "F" :
+        jobdone = True
+    if alljobs == True or jobdone == False :
+        remstring = parse_time(j.t_remaining)
+        reasonnode = j.sched.reason_pending
+        if f"{j.sched.reason_pending}" == "" :
+            reasonnode=j.nodelist
+        partition = get_queuestring(j.sched)
+        print(f"         {j.id.f58:>10} {partition:>9} {j.name:>8.8} {j.username:>8} {j.status_abbrev:>2} {remstring:>10} {j.nnodes:>6} {reasonnode}")
+#       print(f"         {j.id} partition {j.name} {j.username} {j.status_abbrev} {j.t_remaining} {j.nnodes} {j.sched.reason_pending}")
 
 def main(parsedargs) :
     args, unknown_args = parsedargs

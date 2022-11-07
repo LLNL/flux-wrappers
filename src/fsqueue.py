@@ -57,6 +57,12 @@ def printsqueueheader() :
     '''
     print("               JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)")
 
+def printsqueueverbose(verbose_cmd) :
+    '''
+    print underlying flux command
+    '''
+    print("#running : " + verbose_cmd + "--format='         {id.f58:>10} {sched.queue:>9} {name:>8.8} {username:>8} {status_abbrev:>2} {t_remaining!H:>10} {nnodes:>6} {nodelist}'")
+
 def printsqueue(j, alljobs=False) :
     '''
     print one job
@@ -77,15 +83,19 @@ def printsqueue(j, alljobs=False) :
 #       print(f"         {j.id} partition {j.name} {j.username} {j.status_abbrev} {j.t_remaining} {j.nnodes} {j.sched.reason_pending}")
 
 def main(parsedargs) :
+    verbose_cmd = "flux jobs "
     args, unknown_args = parsedargs
     if unknown_args  :
         print_argwarn(" ".join(unknown_args))
     if args.user != None :
         user = args.user
+        verbose_cmd += "-u " +args.user
     else :
         user = "all"
+        verbose_cmd += "-A "
     if args.state != None :
         printall=True
+        verbose_cmd += "-a "
         if args.state != "all" :
             print_argwarn(f"-t {args.state}")
     else :
@@ -97,11 +107,16 @@ def main(parsedargs) :
         jobidlist = []
         for j in args.jobs.split(",") :
             jobidlist.append(fjob.id_parse(j))
+            verbose_cmd += j + " "
         mylist = fjob.JobList(myhandle,user=user,ids=jobidlist)
     if args.nodelist:
         myjoblist = filter_byhostlist(mylist, args.nodelist)
+        if args.verbose == True :
+            print("#warning: hostlist filtering not possible with flux-jobs CLI")
     else :
         myjoblist = mylist.jobs()
+    if args.verbose == True :
+        printsqueueverbose(verbose_cmd)
     if args.noheader != True :
         printsqueueheader()
     for job in myjoblist :
@@ -114,4 +129,5 @@ if __name__ == '__main__' :
     parser.add_argument('-j', '--jobs', metavar='<jobid>,<jobid>,....', help='display only jobs specified')
     parser.add_argument('-h', '--noheader', action='store_true', help='do not print a header')
     parser.add_argument('-w', '--nodelist', metavar='<nodelist>', help='show jobs that ran on nodelist')
+    parser.add_argument('-v', '--verbose', action='store_true', help='show underlying flux command')
     main(parser.parse_known_args())

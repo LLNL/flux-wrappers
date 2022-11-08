@@ -9,7 +9,7 @@ sub print_usage(){
     print " Options:\n";
     print "  -R              display information about drained nodes\n";
     print "  -h|--noheader   do not print a header line\n";
-    print "  -v|--verbose    show underlying flux command"
+    print "  -v|--verbose    show underlying flux command";
     exit 1;
 }
 
@@ -77,7 +77,7 @@ foreach my $arg (@ARGV) {
     }elsif( $arg eq '-h' or $arg eq '--noheader' ){
         $header = 0;
     }elsif( $arg eq '-v' or $arg eq '--verbose' ){
-        $vebose = 1;
+        $verbose = 1;
     }elsif( $arg eq '--help' ){
         print_usage;
     }else{

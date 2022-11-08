@@ -21,13 +21,14 @@ sub print_warn($){
     print "See 'sinfo --help' for supported options.\n\n";
 }
 
-sub run_drain($){
-    my ($h,$v) = @_;
+sub run_drain{
+    #my ($h,$v) = @_;
+    my %params = @_;
     open CMD, "flux resource drain |" or die "$0 couldn't run 'flux resource drain'.\n";
-    if( $v ){
+    if( $params{verbose} ){
         print "#running : flux resource drain"
     }
-    if( $h ){
+    if( $params{header} ){
         print "REASON               USER      TIMESTAMP           NODELIST\n";
     }
     <CMD>;
@@ -43,13 +44,14 @@ sub run_drain($){
     close CMD;
 }
 
-sub run_list($){
-    my ($h,$v) = @_;
+sub run_list{
+    #my ($h,$v) = @_;
+    my %params = @_;
     open CMD, "flux resource list -o '{nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
-    if( $v ){
+    if( $params{verbose} ){
         print "#running : flux resource list\n"
     }
-    if( $h ){
+    if( $params{header} ){
         print "PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST\n";
     }
     <CMD>;
@@ -90,7 +92,11 @@ if( $extraargs ){
 }
 
 if( $drain ){
-    run_drain($header,$verbose);
+    run_drain(
+        header => $header,
+        verbose => $verbose);
 }else{
-    run_list($header,$verbose);
+    run_list(
+        header => $header,
+        verbose => $verbose);
 }

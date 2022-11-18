@@ -175,7 +175,7 @@ if ($label_opt) {
 }
 
 if ($mem_bind_opt and $mem_bind_opt ne 'none') {
-    print STDERR "Warning: --mem-bind options other than 'none' are not supported. Ignoring $mem_bind_opt.\n";
+    print STDERR "Warning: --mem-bind options other than 'none' are not supported. Ignoring '--mem-bind=$mem_bind_opt'.\n";
 }
 
 if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {

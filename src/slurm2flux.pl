@@ -11,7 +11,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpu_bind_opt, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $job_name_val, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $mpibind_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node_opt, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpu_bind_opt, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $jobname_opt, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $mpibind_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node_opt, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -160,6 +160,10 @@ if ($gpus_per_task_opt) {
 
 if ($help_opt) {
 	usage();
+}
+
+if ($jobname_opt) {
+    push @OPTIONS, "--job-name=$jobname_opt ";
 }
 
 if ($label_opt) {
@@ -521,6 +525,7 @@ sub GetOpts
         'H|hold'                 => \$hold_opt,
 		'h|help'         	     => \$help_opt,
         'i|input=s'              => \$input_opt,
+        'J|job-name=s'           => \$jobname_opt,
         'jobid=s'                => \$jobid_opt,
         'l|label'         	     => \$label_opt,
         'mpibind=s'              => \$mpibind_opt,
@@ -571,6 +576,7 @@ OPTIONS
 -H|--hold                   Submit job in a 'held' state.
 -h|--help                   List the available options.
 -i|--input=<filename>       Path and file name for stdin.
+-J|--job-name=<jobname>     Name for the job.
 --jobid=<jobid>             Run under an existing allocation (srun only).
 -l|--label                  Label IO with task tank prefixes.
 --mpibind=<option>          Options for mpibind pluging.
@@ -607,7 +613,6 @@ OPTIONS
 #                'G|geometry=s'      		=> \$geometry_opt,
 #                'I|immediate:s'     		=> \$immediate_opt,
 #                'join=s'          		=> \$join_opt,
-#                'J|job-name=s'      		=> \$job_name_val,
 #                'k|no-kill'       		=> \$no_kill_opt,
 #                'K|kill-on-bad-exit:s' 		=> \$kill_on_bad_exit_opt,
 #                'L|licenses=s'      		=> \$licenses_opt,
@@ -639,7 +644,6 @@ OPTIONS
 #                'gres=s'             		=> \$gres_opt,
 #                'hint=s'             		=> \$hint_opt,
 #                'ioload-image=s'     		=> \$ioload_images_opt,
-#                'jobid=s'          		=> \$jobid_opt,
 #                'linux-image=s'      		=> \$linux_image_opt,
 #                'mail-type=s'        		=> \$ail_type_opt,
 #                'mail-user=s'        		=> \$mail_user_opt,

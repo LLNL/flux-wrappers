@@ -216,7 +216,7 @@ if ($output_opt) {
 }
 
 if ($partition_opt) {
-    push @OPTIONS, "--setattr=queue=$partition_opt ";
+    push @OPTIONS, "--queue=$partition_opt ";
 }
 
 if ($priority_opt=~/^\d+$/) {

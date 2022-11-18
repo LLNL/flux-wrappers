@@ -170,6 +170,10 @@ if ($label_opt) {
     push @OPTIONS, "--label-io ";
 }
 
+if ($mem_bind_opt and $mem_bind_opt ne 'none') {
+    print STDERR "Warning: --mem-bind options other than 'none' are not supported. Ignoring $mem_bind_opt.\n";
+}
+
 if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
     if( $mpibind_opt eq 'off' ){
         unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
@@ -528,6 +532,7 @@ sub GetOpts
         'J|job-name=s'           => \$jobname_opt,
         'jobid=s'                => \$jobid_opt,
         'l|label'         	     => \$label_opt,
+        'mem-bind=s'             => \$mem_bind_opt,
         'mpibind=s'              => \$mpibind_opt,
 		'nice=i'         	     => \$priority_opt,
 		'N|nodes=i'        	     => \$nodes_opt,
@@ -579,6 +584,7 @@ OPTIONS
 -J|--job-name=<jobname>     Name for the job.
 --jobid=<jobid>             Run under an existing allocation (srun only).
 -l|--label                  Label IO with task tank prefixes.
+--mem-bind=none             Memory binding preferences. 'none' is the only currently valid value.
 --mpibind=<option>          Options for mpibind pluging.
 -N|--nodes=<count>          Number of nodes needed.
 -n|--ntasks=<count>         Number of tasks needed.

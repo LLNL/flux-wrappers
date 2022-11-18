@@ -82,6 +82,11 @@ if( $0 =~ /sbatch$/ and !$wrap_opt ){
 #
 # Translate options
 #
+
+if ($account_opt) {
+    push @OPTIONS, "--setattr=bank=$account_opt ";
+}
+
 if ($begin_opt) {
     push @OPTIONS, "--begin-time=".processBegin($begin_opt)." ";
 }
@@ -211,7 +216,7 @@ if ($output_opt) {
 }
 
 if ($partition_opt) {
-    push @OPTIONS, "--setattr=system.queue=$partition_opt ";
+    push @OPTIONS, "--setattr=queue=$partition_opt ";
 }
 
 if ($priority_opt=~/^\d+$/) {
@@ -539,6 +544,7 @@ sub GetOpts
     @ARGV = @tmpargv;
 
 	return GetOptions(
+        'A|account=s'            => \$account_opt,
         'b|begin=s'              => \$begin_opt,
 		'c|cpus-per-task=i'	     => \$cpus_per_task_opt,
         'cpu-bind=s'             => \$cpu_bind_opt,
@@ -550,7 +556,7 @@ sub GetOpts
 		'e|error=s'        	     => \$error_opt,
         'exact'                  => \$exact_opt,
         'exclusive'              => \$exclusive_opt,
-        'export=s'                 => \$export_opt,
+        'export=s'               => \$export_opt,
         'gpu-bind=s'             => \$gpu_bind_opt,
         'gpus-per-node=s'        => \$gpus_per_node_opt,
         'gpus-per-task=i'        => \$gpus_per_task_opt,
@@ -592,6 +598,7 @@ sub usage
 
 OPTIONS
 =======
+-A|--account=<bank>         Run job under <bank>.
 -b|--begin=<datetime>       Ensure that job doesn't start until date/time.
 --cores=<count>             Number of cores for job.
 --cores-per-socket=<count>  Number of cores per socket (must also use --sockets-per-node and --nodes).
@@ -640,7 +647,6 @@ OPTIONS
 ########## not yet, might be needed later on.
 ##########
 #                'a|attach'        		=> \$attach_opt,
-#                'A|account=s'       		=> \$account_opt,
 #                'b|batch'         		=> \$batch_opt,
 #                'Bextra-node-info=s' 		=> \$vextra_node_al,
 #                'C|constraint=s'    		=> \$constraint_opt,

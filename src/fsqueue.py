@@ -74,13 +74,13 @@ def sprintf(format_string, types_dict):
     result = []
     prev_end = 0
     for token in re.finditer(r"%\.?[0-9]*[^%\s]?", format_string):
-        result.append(format_string[prev_end:token.start()])
+        result.append(format_string[prev_end : token.start()])
 
         width_match = re.match(r"\.*[0-9]+", token.group()[1:])
         if width_match is not None:
             width_string = width_match.group()
             output = types_dict[token.group().replace(width_string, "")]
-            if width_string[0] == '.':
+            if width_string[0] == ".":
                 width = int(width_string[1:])
                 output = f"{output:>{width}}"[:width]
             else:
@@ -110,7 +110,7 @@ def printsqueueheader(format_string):
         "%t": "STATUS",
         "%M": "TIME",
         "%D": "NODES",
-        "%R": "NODELIST(REASON)"
+        "%R": "NODELIST(REASON)",
     }
 
     sprintf(format_string, types)
@@ -122,8 +122,10 @@ def printsqueue(j, format_string):
     """
     remstring = parse_time(j.t_remaining)
     reasonnode = j.sched.reason_pending
+
     if f"{j.sched.reason_pending}" == "":
         reasonnode = j.nodelist
+
     partition = get_queuestring(j.sched)
 
     types = {
@@ -135,7 +137,7 @@ def printsqueue(j, format_string):
         "%t": j.status_abbrev,
         "%M": remstring,
         "%D": j.nnodes,
-        "%R": reasonnode
+        "%R": reasonnode,
     }
 
     sprintf(format_string, types)
@@ -170,6 +172,8 @@ def main(parsedargs):
             "pd": "pending",
             "all": "active",
         }
+
+        # Normalize and search for state in known states.
         if args.state.lower() in known_states.keys():
             job_states = [known_states[args.state.lower()]]
         else:
@@ -206,7 +210,7 @@ def main(parsedargs):
     # -------------------------------------------------------------------------
     # Filter so that all jobs are running on a node in args.nodelist if provided.
     if args.nodelist is not None:
-        nodelist = [node.strip() for node in args.nodelist.split(",")]
+        nodelist = flux.hostlist.Hostlist(args.nodelist)
         jobs = [job for job in jobs if job.nodelist in nodelist]
 
     if args.noheader is False:
@@ -217,7 +221,10 @@ def main(parsedargs):
 
 
 if __name__ == "__main__":
-    def fmt(prog): return CustomHelpFormatter(prog)
+
+    def fmt(prog):
+        return CustomHelpFormatter(prog)
+
     parser = argparse.ArgumentParser(
         description="List running and queued jobs in squeue format.",
         conflict_handler="resolve",
@@ -246,7 +253,7 @@ if __name__ == "__main__":
         "--format",
         metavar="<format>",
         default="%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R",
-        help="format specification"
+        help="format specification",
     )
 
     parser.add_argument(

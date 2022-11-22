@@ -9,6 +9,7 @@
 import argparse
 import flux
 import flux.job
+import flux.hostlist
 import sys
 import os
 
@@ -149,7 +150,7 @@ def main(args):
     # -------------------------------------------------------------------------
     # Filter so that all jobs are running on a node in args.nodelist if provided.
     if args.nodelist is not None:
-        nodelist = [node.strip() for node in args.nodelist.split(",")]
+        nodelist = flux.hostlist.Hostlist(args.nodelist)
         jobs = [job for job in jobs if job.nodelist in nodelist]
         job_filters["nodelist"] = ",".join(nodelist)
 

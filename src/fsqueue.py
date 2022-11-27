@@ -61,6 +61,7 @@ class SlurmFormatter:
         print header for output
         """
         headers = {
+            "%": "",
             "%a": "USERNAME",
             "%i": "JOBID",
             "%P": "PARTITION",
@@ -83,6 +84,7 @@ class SlurmFormatter:
             reasonnode = job.nodelist
 
         values = {
+            "%": "",
             "%a": job.username,
             "%i": job.id.f58,
             "%P": str(job.sched.queue),
@@ -236,6 +238,10 @@ def main(parsedargs):
         jobs = [job for job in jobs if job.nodelist in nodelist]
 
     formatter = SlurmFormatter()
+
+    unknown_tokens = formatter.get_unknown_tokens(args.format)
+    for token in unknown_tokens:
+        print(f"Invalid job format specification: {token[1]}", file=sys.stderr)
 
     if args.noheader is False:
         headers_dict = formatter.get_header_dict()

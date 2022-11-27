@@ -33,138 +33,162 @@ class CustomHelpFormatter(argparse.HelpFormatter):
         return ", ".join(action.option_strings) + " " + args_string
 
 
-def print_argwarn(argval):
+class SlurmFormatter:
+    """ """
+
+    token_re = r"%\.?[0-9]*[^%\s]?"
+    token_pad_re = r"\.*[0-9]+"
+
+    @staticmethod
+    def parse_time(time):
+        """
+        turn a bunch of seconds into something human readable
+        """
+        time = int(time)
+
+        # Convert time into hours, minutes, and seconds.
+        hours = time // 3600 % 24
+        minutes = time // 60 % 60
+        seconds = time % 60
+
+        if hours > 0:
+            return f"{hours}:{minutes:02}:{seconds:02}"
+
+        return f"{minutes:02}:{seconds:02}"
+
+    def get_header_dict(self):
+        """
+        print header for output
+        """
+        headers = {
+            "%a": "USERNAME",
+            "%i": "JOBID",
+            "%P": "PARTITION",
+            "%j": "NAME",
+            "%u": "USER",
+            "%t": "STATUS",
+            "%M": "TIME",
+            "%D": "NODES",
+            "%R": "NODELIST(REASON)",
+        }
+
+        return headers
+
+    def get_job_dict(self, job):
+        """
+        Print a row based on the information from a job and format_string.
+        """
+        reasonnode = job.sched.reason_pending
+        if str(job.sched.reason_pending) == "":
+            reasonnode = job.nodelist
+
+        values = {
+            "%a": job.username,
+            "%i": job.id.f58,
+            "%P": str(job.sched.queue),
+            "%j": job.name,
+            "%u": job.username,
+            "%t": job.status_abbrev,
+            "%M": self.parse_time(job.runtime),
+            "%D": job.nnodes,
+            "%R": reasonnode,
+        }
+
+        return values
+
+    def format(self, format_string, types_dict):
+        """
+        format output to minimc slurm's format language
+        """
+        result = []
+        prev_end = 0
+
+        # Search for tokens that begin with % in the format string.
+        for token in re.finditer(self.token_re, format_string):
+
+            # Copy text in string before format token to the result text.
+            prefix = format_string[prev_end : token.start()]
+            result.append(prefix)
+
+            # To match the behavior of squeue's format option we should
+            # ignore unknown tokens and print them as regular text after
+            # issuing a warning.
+            try:
+                # Users may specify padding modifiers before tokens in
+                # the form of %.10u or %10u to indicate a prefix or suffix
+                # padding respectively. Find and extract padding modifiers
+                # if present.
+                width_match = re.match(self.token_pad_re, token.group()[1:])
+                if width_match is not None:
+                    width_string = width_match.group()
+                    output = types_dict[token.group().replace(width_string, "")]
+                    if width_string[0] == ".":
+                        width = int(width_string[1:])
+                        output = f"{output:>{width}}"[:width]
+                    else:
+                        width = int(width_string)
+                        output = f"{output:<{width}}"[:width]
+                else:
+                    output = types_dict[token.group()]
+
+                result.append(output)
+
+            except KeyError:
+                continue
+
+            prev_end = token.end()
+
+        # Add the remainder of format string after last token to result.
+        result.append(format_string[prev_end:])
+        return "".join(result)
+
+    def get_unknown_tokens(self, format_string):
+        """
+        Return a list of unknown tokens based on the types_dict given.
+        """
+        headers = self.get_header_dict()
+        unknown_tokens = []
+        for token in re.finditer(self.token_re, format_string):
+            width_match = re.match(self.token_pad_re, token.group()[1:])
+            key = token.group()
+            try:
+                if width_match is not None:
+                    width_string = width_match.group()
+                    key = key.replace(width_string, "")
+                    headers[key]
+                else:
+                    headers[key]
+            except KeyError:
+                unknown_tokens.append(key)
+        return unknown_tokens
+
+
+def argwarn(argval):
     """
     print a warning for unsupported arguments
     """
-    print(f'WARNING: "{argval}" is not supported by this wrapper and is being ignored.')
-    print('WARNING: fsqueue is a wrapper script for the native "flux jobs" command.')
-    print(
+    return (
+        f'WARNING: "{argval}" is not supported by this wrapper and is being ignored.\n'
+        'WARNING: fsqueue is a wrapper script for the native "flux jobs" command.\n'
         'See "flux help jobs" or contact the LC Hotline for help using the native commands.'
     )
-    return None
-
-
-def parse_time(time):
-    """
-    turn a bunch of seconds into something human readable
-    """
-    itime = int(time)
-    seconds = itime % 60
-    mtime = int(itime / 60)
-    minutes = mtime % 60
-    htime = int(mtime / 60)
-    if htime > 0:
-        return f"{htime}:{minutes:02}:{seconds:02}"
-    else:
-        return f"{minutes:02}:{seconds:02}"
-
-
-def get_queuestring(sched):
-    """
-    parse sched from flux to get queue
-    """
-    return f"{sched.queue}"
-
-
-def sprintf(format_string, types_dict):
-    """
-    print output to minimc slurm's format language
-    """
-    result = []
-    prev_end = 0
-    for token in re.finditer(r"%\.?[0-9]*[^%\s]?", format_string):
-        result.append(format_string[prev_end : token.start()])
-
-        width_match = re.match(r"\.*[0-9]+", token.group()[1:])
-        if width_match is not None:
-            width_string = width_match.group()
-            output = types_dict[token.group().replace(width_string, "")]
-            if width_string[0] == ".":
-                width = int(width_string[1:])
-                output = f"{output:>{width}}"[:width]
-            else:
-                width = int(width_string)
-                output = f"{output:<{width}}"[:width]
-        else:
-            output = types_dict[token.group()]
-
-        result.append(output)
-
-        prev_end = token.end()
-
-    result.append(format_string[prev_end:])
-    print("".join(result))
-
-
-def printsqueueheader(format_string):
-    """
-    print header for output
-    """
-    types = {
-        "%a": "USERNAME",
-        "%i": "JOBID",
-        "%P": "PARTITION",
-        "%j": "NAME",
-        "%u": "USER",
-        "%t": "STATUS",
-        "%M": "TIME",
-        "%D": "NODES",
-        "%R": "NODELIST(REASON)",
-    }
-
-    sprintf(format_string, types)
-
-
-def printsqueue(j, format_string):
-    """
-    print one job
-    """
-    remstring = parse_time(j.t_remaining)
-    reasonnode = j.sched.reason_pending
-
-    if f"{j.sched.reason_pending}" == "":
-        reasonnode = j.nodelist
-
-    partition = get_queuestring(j.sched)
-
-    types = {
-        "%a": j.username,
-        "%i": j.id.f58,
-        "%P": partition,
-        "%j": j.name,
-        "%u": j.username,
-        "%t": j.status_abbrev,
-        "%M": remstring,
-        "%D": j.nnodes,
-        "%R": reasonnode,
-    }
-
-    sprintf(format_string, types)
 
 
 def main(parsedargs):
     args, unknown_args = parsedargs
     if unknown_args:
-        print_argwarn(" ".join(unknown_args))
+        print(argwarn(" ".join(unknown_args)), file=sys.stderr)
 
-    # -------------------------------------------------------------------------
-    # Configure user for command scope
-    # -------------------------------------------------------------------------
     # Set user if explicitly specified.
     user = "all"
     if args.user is not None:
         user = args.user
 
-    # -------------------------------------------------------------------------
-    # Configure explicit job_states if given.
-    # -------------------------------------------------------------------------
     # Set default job_states for search.
     job_states = ["pending", "running"]
 
-    # Validate given job state.
+    # Validate explicit job state if given.
     if args.state is not None:
-        # Load dictionary of known states and their aliases.
         known_states = {
             "running": "running",
             "r": "running",
@@ -177,47 +201,49 @@ def main(parsedargs):
         if args.state.lower() in known_states.keys():
             job_states = [known_states[args.state.lower()]]
         else:
-            print(f"Invalid job state specified: {args.state}", file=sys.stderr)
-            print(f"Valid job states include: {','.join(known_states.keys())}")
+            print(
+                f"Invalid job state specified: {args.state}",
+                file=sys.stderr,
+            )
+            print(
+                f"Valid job states include: {','.join(known_states.keys())}",
+                file=sys.stderr,
+            )
             exit(1)
 
-    # -------------------------------------------------------------------------
-    # Configure explicit job_id if given.
-    # -------------------------------------------------------------------------
-    # Set default job_ids as an empty list in the case a job_id is not explicitly
-    # extered as an argument.
+    # Start with an empty list of job ids and append ids if explicity
+    # defined by the user as an argument.
     job_ids = []
-
-    # Build job_id if given as an explicit argument.
     if args.jobs is not None:
         for id in args.jobs.split(","):
             job_ids.append(flux.job.JobID(id))
 
-    # Initialize connection to flux.
+    # Initialize a connection to flux.
     conn = flux.Flux()
 
-    # -------------------------------------------------------------------------
-    # Query Flux for JobList
-    # -------------------------------------------------------------------------
-    # Retrieve jobs and attributes from flux.
+    # Retrieve a list of jobs and attributes from flux. If job_ids is not empty
+    # the search will be limited to the jobs specified. Otherwise flux will
+    # return a full list of all jobs matching the other filters we've specified.
     rpc = flux.job.JobList(
         conn, user=user, ids=job_ids, filters=job_states
     ).fetch_jobs()
     jobs = list(rpc.get_jobinfos())
 
-    # -------------------------------------------------------------------------
-    # Filter retrived jobs based on job properies and given arguments.
-    # -------------------------------------------------------------------------
-    # Filter so that all jobs are running on a node in args.nodelist if provided.
+    # Further filter jobs so that all jobs are running on a node in
+    # args.nodelist if a nodelist was specified by the user.
     if args.nodelist is not None:
         nodelist = flux.hostlist.Hostlist(args.nodelist)
         jobs = [job for job in jobs if job.nodelist in nodelist]
 
+    formatter = SlurmFormatter()
+
     if args.noheader is False:
-        printsqueueheader(args.format)
+        headers_dict = formatter.get_header_dict()
+        print(formatter.format(args.format, headers_dict))
 
     for job in jobs:
-        printsqueue(job, args.format)
+        job_dict = formatter.get_job_dict(job)
+        print(formatter.format(args.format, job_dict))
 
 
 if __name__ == "__main__":

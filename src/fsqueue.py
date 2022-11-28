@@ -112,7 +112,7 @@ def main(parsedargs) :
     if args.nodelist:
         myjoblist = filter_byhostlist(mylist, args.nodelist)
         if args.verbose == True :
-            print("#warning: hostlist filtering not possible with flux-jobs CLI")
+            print("WARNING: hostlist filtering not possible with flux-jobs CLI")
     else :
         myjoblist = mylist.jobs()
     if args.verbose == True :

@@ -9,6 +9,7 @@ sub print_usage(){
     print " Options:\n";
     print "  -R              display information about drained nodes\n";
     print "  -h|--noheader   do not print a header line\n";
+    print "  -v|--verbose    show underlying flux command";
     exit 1;
 }
 
@@ -20,10 +21,14 @@ sub print_warn($){
     print "See 'sinfo --help' for supported options.\n\n";
 }
 
-sub run_drain($){
-    my ($h) = @_;
+sub run_drain{
+    #my ($h,$v) = @_;
+    my %params = @_;
     open CMD, "flux resource drain |" or die "$0 couldn't run 'flux resource drain'.\n";
-    if( $h ){
+    if( $params{verbose} ){
+        print "#running : flux resource drain"
+    }
+    if( $params{header} ){
         print "REASON               USER      TIMESTAMP           NODELIST\n";
     }
     <CMD>;
@@ -39,10 +44,14 @@ sub run_drain($){
     close CMD;
 }
 
-sub run_list($){
-    my ($h) = @_;
+sub run_list{
+    #my ($h,$v) = @_;
+    my %params = @_;
     open CMD, "flux resource list -o '{nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
-    if( $h ){
+    if( $params{verbose} ){
+        print "#running : flux resource list\n"
+    }
+    if( $params{header} ){
         print "PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST\n";
     }
     <CMD>;
@@ -62,12 +71,15 @@ sub run_list($){
 
 my $drain = '';
 my $header = 1;
+my $verbose = 0;
 my $extraargs = '';
 foreach my $arg (@ARGV) {
     if( $arg eq '-R' ){
         $drain = "true";
     }elsif( $arg eq '-h' or $arg eq '--noheader' ){
         $header = 0;
+    }elsif( $arg eq '-v' or $arg eq '--verbose' ){
+        $verbose = 1;
     }elsif( $arg eq '--help' ){
         print_usage;
     }else{
@@ -80,7 +92,11 @@ if( $extraargs ){
 }
 
 if( $drain ){
-    run_drain($header);
+    run_drain(
+        header => $header,
+        verbose => $verbose);
 }else{
-    run_list($header);
+    run_list(
+        header => $header,
+        verbose => $verbose);
 }

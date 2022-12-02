@@ -530,17 +530,21 @@ sub GetOpts
     my @tmpargv;
     my $prevarg = my $doubledash = '';
     foreach my $tmp (@ARGV){
-        if( $tmp =~ /^(\-\w)(\S+)/ and 
-                push(@tmpargv, $1),
-                push(@tmpargv, $2) ){
-            $prevarg = $2;
-        }else{
-            if( !$doubledash and $tmp !~ /^\-/ and ($prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
-                push @tmpargv, '--';
-                $doubledash = 'yes';
+        if( !$doubledash ){
+            if( $tmp =~ /^(\-\w)(\S+)/ and 
+                    push(@tmpargv, $1),
+                    push(@tmpargv, $2) ){
+                $prevarg = $2;
+            }else{
+                if( $tmp !~ /^\-/ and ($prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
+                    push @tmpargv, '--';
+                    $doubledash = 'yes';
+                }
+                push @tmpargv, $tmp;
+                $prevarg = $tmp;
             }
+        }else{
             push @tmpargv, $tmp;
-            $prevarg = $tmp;
         }
     }
 

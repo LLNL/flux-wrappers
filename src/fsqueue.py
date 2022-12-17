@@ -7,11 +7,13 @@
 ###############################################################
 
 import argparse
+import datetime
 import flux
-import flux.job
 import flux.hostlist
+import flux.job
+import logging
 import re
-import sys
+import time
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -110,7 +112,6 @@ class SlurmFormatter:
 
             # Copy text in string before format token to the result text.
             prefix = format_string[prev_end : token.start()]
-            result.append(prefix)
 
             # To match the behavior of squeue's format option we should
             # ignore unknown tokens and print them as regular text after
@@ -133,12 +134,12 @@ class SlurmFormatter:
                 else:
                     output = types_dict[token.group()]
 
+                result.append(prefix)
                 result.append(output)
+                prev_end = token.end()
 
             except KeyError:
                 continue
-
-            prev_end = token.end()
 
         # Add the remainder of format string after last token to result.
         result.append(format_string[prev_end:])
@@ -165,26 +166,36 @@ class SlurmFormatter:
         return unknown_tokens
 
 
-def argwarn(argval):
+def disclaimer():
     """
     print a warning for unsupported arguments
     """
     return (
-        f'WARNING: "{argval}" is not supported by this wrapper and is being ignored.\n'
-        'WARNING: fsqueue is a wrapper script for the native "flux jobs" command.\n'
-        'See "flux help jobs" or contact the LC Hotline for help using the native commands.'
+        'fsqueue: hint: fsqueue is a wrapper script for the native "flux jobs" command.\n'
+        'fsqueue: hint: See "man flux jobs" for help using the native commands.'
     )
 
 
 def main(parsedargs):
     args, unknown_args = parsedargs
+    logging.basicConfig(level=args.loglevel, format="%(message)s")
     if unknown_args:
-        print(argwarn(" ".join(unknown_args)), file=sys.stderr)
+        logging.warning(
+            f'fsqueue: warning: "{unknown_args}" is not supported by this wrapper and is being ignored.\n'
+        )
+        logging.warning(disclaimer())
+    else:
+        logging.debug(disclaimer())
+
+    # Setup the flux command variable to track added options to fsqueue
+    flux_command = "flux jobs"
 
     # Set user if explicitly specified.
     user = "all"
+    flux_command += " -A"
     if args.user is not None:
         user = args.user
+        flux_command = flux_command.replace("-A", f"-u {args.user}")
 
     # Set default job_states for search.
     job_states = ["pending", "running"]
@@ -202,14 +213,11 @@ def main(parsedargs):
         # Normalize and search for state in known states.
         if args.state.lower() in known_states.keys():
             job_states = [known_states[args.state.lower()]]
+            flux_command += f" -f {','.join(job_states)}"
         else:
-            print(
-                f"Invalid job state specified: {args.state}",
-                file=sys.stderr,
-            )
-            print(
-                f"Valid job states include: {','.join(known_states.keys())}",
-                file=sys.stderr,
+            logging.error(f"fsqueue: error: Invalid job state specified: {args.state}")
+            logging.error(
+                f"fsqueue: error: Valid job states include: {','.join(known_states.keys())}"
             )
             exit(1)
 
@@ -219,6 +227,7 @@ def main(parsedargs):
     if args.jobs is not None:
         for id in args.jobs.split(","):
             job_ids.append(flux.job.JobID(id))
+            flux_command += " " + id
 
     # Initialize a connection to flux.
     conn = flux.Flux()
@@ -237,11 +246,29 @@ def main(parsedargs):
         nodelist = flux.hostlist.Hostlist(args.nodelist)
         jobs = [job for job in jobs if job.nodelist in nodelist]
 
+    # If run with very verbose, show equivalent flux commands to what we
+    # are showing in fsqueue.
+    logging.debug("fsqueue: hint: To see an equivelent output from flux try running,")
+    logging.debug("")
+    logging.debug("\t" + flux_command)
+    logging.debug("")
+
+    # If run with verbose mimic squeue's verbose output format to display the
+    # values of each of the input command line argument values.
+    logging.info("-----------------------------")
+    for arg in vars(args):
+        logging.info(f"{arg:<11} = {getattr(args, arg)}")
+    logging.info("-----------------------------")
+    logging.info("")
+    logging.info("")
+    logging.info(datetime.datetime.now().strftime("%a %b %d %H:%M:%S %Y"))
+    logging.info(f"last_update_time={int(time.time())} records={len(jobs)}")
+
     formatter = SlurmFormatter()
 
     unknown_tokens = formatter.get_unknown_tokens(args.format)
     for token in unknown_tokens:
-        print(f"Invalid job format specification: {token[1]}", file=sys.stderr)
+        logging.error(f"fsqeue: error: Invalid job format specification: {token[1]}")
 
     if args.noheader is False:
         headers_dict = formatter.get_header_dict()
@@ -286,6 +313,24 @@ if __name__ == "__main__":
         metavar="<format>",
         default="%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R",
         help="format specification",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="report details of fsqueues actions",
+        action="store_const",
+        dest="loglevel",
+        const=logging.INFO,
+    )
+
+    parser.add_argument(
+        "-vv",
+        "--very-verbose",
+        help="show equivalent flux commands",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
     )
 
     parser.add_argument(

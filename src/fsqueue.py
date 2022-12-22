@@ -336,5 +336,5 @@ if __name__ == "__main__":
     parser.add_argument(
         "-w", "--nodelist", metavar="<nodelist>", help="show jobs that ran on nodelist"
     )
-
+    
     main(parser.parse_known_args())

@@ -24,28 +24,33 @@ my @OPTIONS = ();
 my @SAVEDARGV = @ARGV;
 
 GetOpts(@ARGV);
+$commandLine = "@ARGV";
 usage() if ($help_opt);
 
 #
 # If we're running in batch mode (sbatch) we need to parse the script for #SBATCH stuff.
 # Otherwise, we just can just pass the rest on to flux.
 #
-if( $0 =~ /sbatch$/ and !$wrap_opt ){
+if( ( $0 =~ /sbatch$/ and !$wrap_opt ) or ( $0 =~ /slurm2flux/ and -e $ARGV[0] and -f _ and -T _ ) ){
     # At this point the only thing left on ARGV should be the script and
     # script arguments (if any).
     if (@ARGV) {
-    	$scriptFile = shift;
+        if( $0 =~ /sbatch$/ ){
+   	        $scriptFile = shift;
+        }else{
+            $scriptFile = $ARGV[0];
+        }
         open FDIN, "< $scriptFile" or die "Unable to open $scriptFile for reading: $!\n";
-		$scriptArgs = join ' ', @ARGV if @ARGV;
+	    $scriptArgs = join ' ', @ARGV if @ARGV;
     }
     # Otherwise read the job command file from STDIN and create a temporary file using
     # the process id as part of the name (for uniqueness).
     else {
-	    open FDIN, "< &STDIN";
-    	$tempFile = "/tmp/jobScript.flux.$$";
-    	open FDOUT, "> $tempFile"
-	    	or die( "Unable to open temporary job script file ($tempFile) for writing: $!\n"
-	    );
+        open FDIN, "< &STDIN";
+   	    $tempFile = "/tmp/jobScript.flux.$$";
+  	    open FDOUT, "> $tempFile"
+    	    or die( "Unable to open temporary job script file ($tempFile) for writing: $!\n"
+        );
     }
 
     # Check job script
@@ -75,8 +80,6 @@ if( $0 =~ /sbatch$/ and !$wrap_opt ){
 	    or die("Invalid SLURM options found in job script file.\n");
     # Check command line arguments (overriding script directives if any)
     GetOpts(@SAVEDARGV);
-}else{
-    $commandLine = "@ARGV";
 }
 
 #
@@ -527,17 +530,21 @@ sub GetOpts
     my @tmpargv;
     my $prevarg = my $doubledash = '';
     foreach my $tmp (@ARGV){
-        if( $tmp =~ /^(\-\w)(\S+)/ and 
-                push(@tmpargv, $1),
-                push(@tmpargv, $2) ){
-            $prevarg = $2;
-        }else{
-            if( !$doubledash and $tmp !~ /^\-/ and ($prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
-                push @tmpargv, '--';
-                $doubledash = 'yes';
+        if( !$doubledash ){
+            if( $tmp =~ /^(\-\w)(\S+)/ and 
+                    push(@tmpargv, $1),
+                    push(@tmpargv, $2) ){
+                $prevarg = $2;
+            }else{
+                if( $tmp !~ /^\-/ and ($prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
+                    push @tmpargv, '--';
+                    $doubledash = 'yes';
+                }
+                push @tmpargv, $tmp;
+                $prevarg = $tmp;
             }
+        }else{
             push @tmpargv, $tmp;
-            $prevarg = $tmp;
         }
     }
 

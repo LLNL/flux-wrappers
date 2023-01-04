@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/bin/env -S flux python
 ###############################################################
 # Copyright 2020 Lawrence Livermore National Security, LLC
 # (c.f. NOTICE.LLNS)

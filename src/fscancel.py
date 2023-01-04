@@ -35,11 +35,12 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 def main(args):
     """Handle the main command logic of scancel."""
+    myname = os.path.basename(__file__)
 
     # Don't print the wrapper announcement if the user requests quiet execution.
     if not args.quiet:
         print(
-            'WARNING: fscancel is a wrapper script for the native "flux job cancel" command.',
+            f'WARNING: {myname} is a wrapper script for the native "flux job cancel" command.',
             file=sys.stderr,
         )
 
@@ -47,7 +48,7 @@ def main(args):
     # to stderr and exit with a return node of 1 to mimic the behavior of
     # scancel.
     if len(args.job_id) < 1 and not len(sys.argv) > 1:
-        print("scancel: error: No job identification provided", file=sys.stderr)
+        print(f"{myname}: error: No job identification provided", file=sys.stderr)
         exit(1)
 
     # Print version information and exit if requested.
@@ -168,7 +169,7 @@ def main(args):
     # user on verbose output.
     if args.verbose and len(jobs) < 1:
         print(
-            "scancel: error: No active jobs match ALL job filters, including:",
+            f"{myname}: error: No active jobs match ALL job filters, including:",
             end=" ",
             file=sys.stderr,
         )
@@ -207,13 +208,13 @@ def main(args):
         # Print error to user if they don't have permission to cancel a job.
         except PermissionError:
             print(
-                f"scancel: error: Kill job error on job id {job.id}: Access/permission denied",
+                f"{myname}: error: Kill job error on job id {job.id}: Access/permission denied",
                 file=sys.stderr,
             )
         except FileNotFoundError:
             if args.verbose:
                 print(
-                    f"scancel: error: Kill job error on job id {job.id}: Invalid job id specified",
+                    f"{myname}: error: Kill job error on job id {job.id}: Invalid job id specified",
                     file=sys.stderr,
                 )
 
@@ -221,7 +222,7 @@ def main(args):
 if __name__ == "__main__":
     fmt = lambda prog: CustomHelpFormatter(prog)
     parser = argparse.ArgumentParser(
-        description="fscancel is a scancel like wrapper for Flux.", formatter_class=fmt
+        description="scancel like wrapper for Flux.", formatter_class=fmt
     )
 
     # parser.add_argument(

@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 sub print_usage(){
-    print "Usage: sinfo [-R] [-h|--noheader]\n";
+    print "Usage: $0 [-R] [-h|--noheader]\n";
     print " Display information about resource status.\n\n";
     print " Options:\n";
     print "  -R              display information about drained nodes\n";
@@ -16,9 +16,9 @@ sub print_usage(){
 sub print_warn($){
     my ($eargs) = @_;
     $eargs =~ s/^\s+//;
-    print "Warning: sinfo is a wrapper script and does not have all Slurm options implemented.\n";
+    print "Warning: $0 is a wrapper script and does not have all Slurm options implemented.\n";
     print "'$eargs' were ignored.\n";
-    print "See 'sinfo --help' for supported options.\n\n";
+    print "See '$0 --help' for supported options.\n\n";
 }
 
 sub run_drain{

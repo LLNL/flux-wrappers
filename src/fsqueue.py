@@ -12,6 +12,7 @@ import flux
 import flux.hostlist
 import flux.job
 import logging
+import os.path
 import re
 import time
 
@@ -170,18 +171,20 @@ def disclaimer():
     """
     print a warning for unsupported arguments
     """
+    myname = os.path.basename(__file__)
     return (
-        'fsqueue: hint: fsqueue is a wrapper script for the native "flux jobs" command.\n'
-        'fsqueue: hint: See "man flux jobs" for help using the native commands.'
+        f'{myname}: hint: {myname} is a wrapper script for the native "flux jobs" command.\n'
+        f'{myname}: hint: See "man flux jobs" for help using the native commands.'
     )
 
 
 def main(parsedargs):
     args, unknown_args = parsedargs
+    myname = os.path.basename(__file__)
     logging.basicConfig(level=args.loglevel, format="%(message)s")
     if unknown_args:
         logging.warning(
-            f'fsqueue: warning: "{unknown_args}" is not supported by this wrapper and is being ignored.\n'
+            f'{myname}: warning: "{unknown_args}" is not supported by this wrapper and is being ignored.\n'
         )
         logging.warning(disclaimer())
     else:
@@ -215,9 +218,9 @@ def main(parsedargs):
             job_states = [known_states[args.state.lower()]]
             flux_command += f" -f {','.join(job_states)}"
         else:
-            logging.error(f"fsqueue: error: Invalid job state specified: {args.state}")
+            logging.error(f"{myname}: error: Invalid job state specified: {args.state}")
             logging.error(
-                f"fsqueue: error: Valid job states include: {','.join(known_states.keys())}"
+                f"{myname}: error: Valid job states include: {','.join(known_states.keys())}"
             )
             exit(1)
 
@@ -248,7 +251,7 @@ def main(parsedargs):
 
     # If run with very verbose, show equivalent flux commands to what we
     # are showing in fsqueue.
-    logging.debug("fsqueue: hint: To see an equivelent output from flux try running,")
+    logging.debug(f"{myname}: hint: To see an equivelent output from flux try running,")
     logging.debug("")
     logging.debug("\t" + flux_command)
     logging.debug("")
@@ -268,7 +271,7 @@ def main(parsedargs):
 
     unknown_tokens = formatter.get_unknown_tokens(args.format)
     for token in unknown_tokens:
-        logging.error(f"fsqeue: error: Invalid job format specification: {token[1]}")
+        logging.error(f"{myname}: error: Invalid job format specification: {token[1]}")
 
     if args.noheader is False:
         headers_dict = formatter.get_header_dict()
@@ -318,7 +321,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v",
         "--verbose",
-        help="report details of fsqueues actions",
+        help="report details of script actions",
         action="store_const",
         dest="loglevel",
         const=logging.INFO,

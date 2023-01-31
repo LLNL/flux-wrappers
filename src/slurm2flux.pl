@@ -250,11 +250,12 @@ if ($no_allocate_opt) {
 #
 # decide what flux command to run based on the Slurm command and run it
 #
+my $exit_status=0;
 if( $0 =~ /salloc$/ ){
     if( $verbose_opt ) {
         print "# running: flux --parent mini alloc @OPTIONS $commandLine\n";
     }
-	system("flux --parent mini alloc @OPTIONS $commandLine");
+	$exit_status = system("flux --parent mini alloc @OPTIONS $commandLine");
 }elsif( $0 =~ /sbatch$/ ){
 	if ($scriptFile || $tempFile) {
 	    if ($scriptFile) {
@@ -269,16 +270,16 @@ if( $0 =~ /salloc$/ ){
     }
     if( $wait_opt ){
         if( $output_opt and $error_opt ){
-    	    system("flux --parent mini alloc @OPTIONS \"$command 1> $output_opt 2> $error_opt\"");
+    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command 1> $output_opt 2> $error_opt\"");
         }elsif( $output_opt ){
-    	    system("flux --parent mini alloc @OPTIONS \"$command >& $output_opt\"");
+    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command >& $output_opt\"");
         }elsif( $error_opt ){
-    	    system("flux --parent mini alloc @OPTIONS \"$command 2> $error_opt\"");
+    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command 2> $error_opt\"");
         }else{
-    	    system("flux --parent mini alloc @OPTIONS $command");
+    	    $exit_status = system("flux --parent mini alloc @OPTIONS $command");
         }
     }else{
-    	system("flux --parent mini batch @OPTIONS $command");
+    	$exit_status = system("flux --parent mini batch @OPTIONS $command");
     }
 }else{
     if( !$cpus_per_task_opt and !$gpus_per_task_opt and
@@ -307,12 +308,12 @@ if( $0 =~ /salloc$/ ){
             if( $verbose_opt ) {
                 print "# running: flux proxy $jobid_opt flux mini run @OPTIONS $commandLine\n";
             }
-            system("flux proxy $jobid_opt flux mini run @OPTIONS $commandLine");
+            $exit_status = system("flux proxy $jobid_opt flux mini run @OPTIONS $commandLine");
         }else{
             if( $verbose_opt ) {
                 print "# running: flux mini run @OPTIONS $commandLine\n";
             }
-	        system("flux mini run @OPTIONS $commandLine");
+	        $exit_status = system("flux mini run @OPTIONS $commandLine");
         }
     }else{
         if( $jobid_opt ){
@@ -322,8 +323,8 @@ if( $0 =~ /salloc$/ ){
         }
     }
 }
-
-exit;
+$exit_status = $exit_status >> 8;
+exit $exit_status;
 
 #
 # translate Slurm begin datetime to Flux datetime

@@ -120,8 +120,8 @@ if ($cpu_bind_opt) {
     if ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') {
         push @OPTIONS, "--setopt=cpu-affinity=off";
     }elsif( $cpu_bind_opt =~ s/^map_cpu\:// or $cpu_bind_opt =~ s/^mask_cpu\:// ){
-        $cpu_bind_opt =~ s/\,/\;/g
-        push @OPTIONS, "--setopt=cpu-affinity=\"$cpu_bind_opt\"";
+        $cpu_bind_opt =~ s/\,/\;/g;
+        push @OPTIONS, "--setopt=cpu-affinity=map:\"$cpu_bind_opt\"";
     }else{
         print "Warning: --cpu-bind=$cpu_bind_opt is not implemented in this wrapper and is being ignored.\n";
         $cpu_bind_opt = '';

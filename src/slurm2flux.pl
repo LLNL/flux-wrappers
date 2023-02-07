@@ -11,7 +11,7 @@ use strict;
 # Define all possible Slurm options, whether Flux supports them or not.
 #
 my (
-$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_opt, $cores_per_socket_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $export_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpu_bind_opt, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $jobname_opt, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $mpibind_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node_opt, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
+$account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt, $begin_opt, $blrts_imnage_opt, $chdir_opt, $checkpoint_opt, $checkpoint_dir_opt, $cnloab_image_opt, $comment_opt, $constraint_opt, $cores_opt, $cores_per_socket_opt, $corespec_opt, $cpu_bind_opt, $cpus_per_task_opt, $debugger_test_opt, $debugger_test_opt, $dependent_opt, $disable_status_opt, $distribution_opt, $error_opt, $exact_opt, $exclude_opt, $exclusive_opt, $export_opt, $flux_debug_opt, $geometry_opt, $get_user_env_opt, $gid_val, $gpu_bind_opt, $gpus_per_node_opt, $gpus_per_task_opt, $gres_opt, $hint_opt, $hold_opt, $immediate_opt, $input_opt, $ioload_images_opt, $jobname_opt, $jobid_opt, $join_opt, $kill_on_bad_exit_opt, $label_opt, $licenses_opt, $linux_image_opt, $mail_exit_opt, $mail_launch_time_opt, $mail_user_opt, $mem_bind_opt, $mem_opt, $mem_per_cpu_opt, $mincores_opt, $mincpus_opt, $minsockets_opt, $minthreads_opt, $mloaver_image_opt, $mpi_opt, $mpibind_opt, $msg_timeout_opt, $multi_prog_opt, $network_opt, $nice_opt, $no_allocate_opt, $no_kill_opt, $no_rotate_opt, $no_shell_opt, $nodelist_opt, $nodes_opt, $ntasks_opt, $ntasks_per_core_opt, $ntasks_per_node_opt, $ntasks_per_socket_opt, $open_mode_opt, $outoput_opt, $output_opt, $overcommit_opt, $partition_opt, $preserve_opt, $priority_opt, $prolog_opt, $propagate_opt, $pty_opt, $qos_opt, $quiet_on_ibnterupt_opt, $quiet_opt, $ramdisk_image_opt, $reboot_opt, $relative_opt, $reservation_opt, $restarert_dir_opt, $resv_ports_opt, $share_opt, $signal_opt, $sockets_per_node_opt, $task_epilog_opt, $task_prolog_opt, $tasks_per_node_opt, $test_only_opt, $tghreads_per_core_opt, $threads_opt, $time_min_opt, $time_opt, $tmp_opt, $uid_opt, $unbuffered_opt, $usage_opt, $verbose_opt, $version_opt, $vextra_node_al, $wait_opt, $wckey_opt, $wrap_opt, $help_opt
 ); 
 
 my (@lreslist, @SlurmScriptOptions);
@@ -26,6 +26,8 @@ my @SAVEDARGV = @ARGV;
 GetOpts(@ARGV);
 $commandLine = "@ARGV";
 usage() if ($help_opt);
+
+my $hasMpibind = checkForMpibind();
 
 #
 # If we're running in batch mode (sbatch) we need to parse the script for #SBATCH stuff.
@@ -114,8 +116,16 @@ if ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt){
     $nodes_opt = '';
 }
 
-if ($cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no')) {
-    push @OPTIONS, "--setopt=cpu-affinity=off";
+if ($cpu_bind_opt) {
+    if ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') {
+        push @OPTIONS, "--setopt=cpu-affinity=off";
+    }elsif( $cpu_bind_opt =~ s/^map_cpu\:// or $cpu_bind_opt =~ s/^mask_cpu\:// ){
+        $cpu_bind_opt =~ s/\,/\;/g;
+        push @OPTIONS, "--setopt=cpu-affinity=map:\"$cpu_bind_opt\"";
+    }else{
+        print "Warning: --cpu-bind=$cpu_bind_opt is not implemented in this wrapper and is being ignored.\n";
+        $cpu_bind_opt = '';
+    }
 }
 
 if ($cpus_per_task_opt) {
@@ -188,14 +198,26 @@ if ($mem_bind_opt and $mem_bind_opt ne 'none') {
 
 if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
     if( $mpibind_opt eq 'off' ){
-        unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
+        unless( $cpu_bind_opt ){
             push @OPTIONS, "--setopt=cpu-affinity=per-task ";
         }
         unless( $gpu_bind_opt and ($gpu_bind_opt eq 'none' or $gpu_bind_opt eq 'no') ){
             push @OPTIONS, "--setopt=gpu-affinity=per-task ";
         }
     }
-    push @OPTIONS, processMpibind($mpibind_opt);
+    if( $hasMpibind ){
+        push @OPTIONS, processMpibind($mpibind_opt);
+    }else{
+        print "Warning: mpibind not found. Ignoring --mpibind flag.\n";
+    }
+}
+
+if ($corespec_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
+    if( $hasMpibind ){
+        push @OPTIONS, "-o mpibind=corespec_first:$corespec_opt ";
+    }else{
+        print "Warning mpibind not found. Ignoring --core-spec flag.\n";
+    }
 }
 
 if ($ntasks_opt) {
@@ -325,6 +347,19 @@ if( $0 =~ /salloc$/ ){
 }
 $exit_status = $exit_status >> 8;
 exit $exit_status;
+
+#
+# check to see if Flux system instance is using mpibind.
+# there's probably a smarter / more general way to do this.
+#
+sub checkForMpibind
+{
+    if( -e "/etc/flux/shell/lua.d/mpibind.lua" ){
+        return 1;
+    }else{
+        return 0;
+    }
+}
 
 #
 # translate Slurm begin datetime to Flux datetime
@@ -584,6 +619,7 @@ sub GetOpts
         'no-shell'               => \$no_shell_opt,
 		'o|output=s'       	     => \$output_opt,
         'p|partition=s'    	     => \$partition_opt,
+        'S|core-spec=s'          => \$corespec_opt,
 		'slurmd-debug=s'   	     => \$flux_debug_opt,
         'sockets-per-node=i'     => \$sockets_per_node_opt,
 		't|time=s'         	     => \$time_opt,
@@ -612,6 +648,8 @@ OPTIONS
 --cores-per-socket=<count>  Number of cores per socket (must also use --sockets-per-node and --nodes).
 -c|cpus-per-task=<count>    Number of cpus per task.
 --cpu-bind=none             Turn off native cpu binding.
+--cpu-bind=<cpu_list>|<cpu_mask>
+                            Specify a detailed task to cpu binding with a cpu list or cpu mask.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
 -d|--dependency=<jobid>     Specify job that this job is dependent on.
@@ -639,6 +677,7 @@ OPTIONS
 --nice=<number>             User defined priority.
 -o|--output=<filename>      Path and file name for stdout data.
 -p|--partion=<partition>    Partition or queue to submit job to.
+-S|--core-spec=<corecount>  Reserve cores for system processes.
 --slurmd-debug=<level>      Debugging added.
 --sockets-per-node=<count>  Number of sockets per node (must also use --cores-per-socket and --nodes).
 -t|--time=<timelimit>       Wall time of job.

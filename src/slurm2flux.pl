@@ -119,6 +119,12 @@ if ($cores_per_socket_opt and $sockets_per_node_opt and $nodes_opt){
 if ($cpu_bind_opt) {
     if ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') {
         push @OPTIONS, "--setopt=cpu-affinity=off";
+    }elsif( $cpu_bind_opt =~ s/^map_cpu\:// or $cpu_bind_opt =~ s/^mask_cpu\:// ){
+        $cpu_bind_opt =~ s/\,/\;/g
+        push @OPTIONS, "--setopt=cpu-affinity=\"$cpu_bind_opt\"";
+    }else{
+        print "Warning: --cpu-bind=$cpu_bind_opt is not implemented in this wrapper and is being ignored.\n";
+        $cpu_bind_opt = '';
     }
 }
 
@@ -192,7 +198,7 @@ if ($mem_bind_opt and $mem_bind_opt ne 'none') {
 
 if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
     if( $mpibind_opt eq 'off' ){
-        unless( $cpu_bind_opt and ($cpu_bind_opt eq 'none' or $cpu_bind_opt eq 'no') ){
+        unless( $cpu_bind_opt ){
             push @OPTIONS, "--setopt=cpu-affinity=per-task ";
         }
         unless( $gpu_bind_opt and ($gpu_bind_opt eq 'none' or $gpu_bind_opt eq 'no') ){
@@ -642,6 +648,8 @@ OPTIONS
 --cores-per-socket=<count>  Number of cores per socket (must also use --sockets-per-node and --nodes).
 -c|cpus-per-task=<count>    Number of cpus per task.
 --cpu-bind=none             Turn off native cpu binding.
+--cpu-bind=<cpu_list>|<cpu_mask>
+                            Specify a detailed task to cpu binding with a cpu list or cpu mask.
 --comment=<comment>         User defined comment.
 -D|--chdir=<directory>      Specify a working directory.
 -d|--dependency=<jobid>     Specify job that this job is dependent on.

@@ -572,7 +572,7 @@ sub GetOpts
                     push(@tmpargv, $2) ){
                 $prevarg = $2;
             }else{
-                if( $tmp !~ /^\-/ and ($prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
+                if( $tmp !~ /^\-/ and ($prevarg =~ /^\-\-/i or $prevarg !~ /^\-/i or is_singlearg($prevarg)) ){
                     push @tmpargv, '--';
                     $doubledash = 'yes';
                 }

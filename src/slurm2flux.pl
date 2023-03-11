@@ -317,7 +317,7 @@ if( $0 =~ /salloc$/ ){
             }elsif( $ENV{"FLUX_JOB_NNODES"} ){   # in a flux job (run,submit)
                 $nodes_opt = min($ntasks_opt, $ENV{"FLUX_JOB_NNODES"});
             }elsif( $ENV{"FLUX_URI"} ){    # in a flux instance (alloc,batch)
-                $nodes_opt = min($ntasks_opt, `flux resource info | awk '{print \$1}'`);
+                $nodes_opt = min($ntasks_opt, `flux resource list -n -o '{nnodes}'`);
                 chomp $nodes_opt;
             }elsif( $ntasks_opt ){   # outside of a flux job
                 $nodes_opt = $ntasks_opt;

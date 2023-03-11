@@ -308,20 +308,21 @@ if( $0 =~ /salloc$/ ){
         !$ntasks_per_core_opt and !$ntasks_per_node_opt ){
         push @OPTIONS, "--exclusive ";
         if( !$nodes_opt ){
-            unless( $ntasks_opt ){
-                $ntasks_opt = 1;
-            }
             if( $jobid_opt ){   # flux proxy job
-                $nodes_opt = min($ntasks_opt, `flux jobs -n -o '{nnodes}' $jobid_opt`);
+                $nodes_opt = `flux jobs -n -o '{nnodes}' $jobid_opt`;
                 chomp $nodes_opt;
             }elsif( $ENV{"FLUX_JOB_NNODES"} ){   # in a flux job (run,submit)
-                $nodes_opt = min($ntasks_opt, $ENV{"FLUX_JOB_NNODES"});
+                $nodes_opt = $ENV{"FLUX_JOB_NNODES"};
             }elsif( $ENV{"FLUX_URI"} ){    # in a flux instance (alloc,batch)
-                $nodes_opt = min($ntasks_opt, `flux resource list -n -o '{nnodes}'`);
+                $nodes_opt = `flux resource list -n -o '{nnodes}'`;
                 chomp $nodes_opt;
-            }elsif( $ntasks_opt ){   # outside of a flux job
-                $nodes_opt = $ntasks_opt;
+            }else{   # outside of a flux job
+                $nodes_opt = $ntasks_opt || 1;
             }
+            unless( $ntasks_opt ){
+                $ntasks_opt = $nodes_opt;
+            }
+            $nodes_opt = min($ntasks_opt, $nodes_opt);
             push @OPTIONS, "--nodes=$nodes_opt ";
         }
     }

@@ -29,6 +29,13 @@ usage() if ($help_opt);
 
 my $hasMpibind = checkForMpibind();
 
+my $fluxcmd = 'flux';
+my $fluxpcmd = 'flux --parent';
+if( getFluxVer() < 0.48 ){
+    $fluxcmd = 'flux mini';
+    $fluxpcmd = 'flux --parent mini';
+}
+
 #
 # If we're running in batch mode (sbatch) we need to parse the script for #SBATCH stuff.
 # Otherwise, we just can just pass the rest on to flux.
@@ -275,9 +282,9 @@ if ($no_allocate_opt) {
 my $exit_status=0;
 if( $0 =~ /salloc$/ ){
     if( $verbose_opt ) {
-        print "# running: flux --parent mini alloc @OPTIONS $commandLine\n";
+        print "# running: $fluxpcmd alloc @OPTIONS $commandLine\n";
     }
-	$exit_status = system("flux --parent mini alloc @OPTIONS $commandLine");
+	$exit_status = system("$fluxpcmd alloc @OPTIONS $commandLine");
 }elsif( $0 =~ /sbatch$/ ){
 	if ($scriptFile || $tempFile) {
 	    if ($scriptFile) {
@@ -288,20 +295,20 @@ if( $0 =~ /salloc$/ ){
     	$command .= " $scriptArgs" if ($scriptArgs);
     }
     if( $verbose_opt ) {
-        print "# running: flux --parent mini batch @OPTIONS $command\n";
+        print "# running: $fluxpcmd batch @OPTIONS $command\n";
     }
     if( $wait_opt ){
         if( $output_opt and $error_opt ){
-    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command 1> $output_opt 2> $error_opt\"");
+    	    $exit_status = system("$fluxpcmd alloc @OPTIONS \"$command 1> $output_opt 2> $error_opt\"");
         }elsif( $output_opt ){
-    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command >& $output_opt\"");
+    	    $exit_status = system("$fluxpcmd alloc @OPTIONS \"$command >& $output_opt\"");
         }elsif( $error_opt ){
-    	    $exit_status = system("flux --parent mini alloc @OPTIONS \"$command 2> $error_opt\"");
+    	    $exit_status = system("$fluxpcmd alloc @OPTIONS \"$command 2> $error_opt\"");
         }else{
-    	    $exit_status = system("flux --parent mini alloc @OPTIONS $command");
+    	    $exit_status = system("$fluxpcmd alloc @OPTIONS $command");
         }
     }else{
-    	$exit_status = system("flux --parent mini batch @OPTIONS $command");
+    	$exit_status = system("$fluxpcmd batch @OPTIONS $command");
     }
 }else{
     if( !$cpus_per_task_opt and !$gpus_per_task_opt and
@@ -329,20 +336,20 @@ if( $0 =~ /salloc$/ ){
     if( $0 =~ /srun$/ ){
         if( $jobid_opt ) {
             if( $verbose_opt ) {
-                print "# running: flux proxy $jobid_opt flux mini run @OPTIONS $commandLine\n";
+                print "# running: flux proxy $jobid_opt $fluxcmd run @OPTIONS $commandLine\n";
             }
-            $exit_status = system("flux proxy $jobid_opt flux mini run @OPTIONS $commandLine");
+            $exit_status = system("flux proxy $jobid_opt $fluxcmd run @OPTIONS $commandLine");
         }else{
             if( $verbose_opt ) {
-                print "# running: flux mini run @OPTIONS $commandLine\n";
+                print "# running: $fluxcmd run @OPTIONS $commandLine\n";
             }
-	        $exit_status = system("flux mini run @OPTIONS $commandLine");
+	        $exit_status = system("$fluxcmd run @OPTIONS $commandLine");
         }
     }else{
         if( $jobid_opt ){
-            printf("flux proxy $jobid_opt flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
+            printf("flux proxy $jobid_opt $fluxcmd [run|alloc|batch] @OPTIONS $commandLine\n");
         }else{
-            printf("flux mini [run|alloc|batch] @OPTIONS $commandLine\n");
+            printf("$fluxcmd [run|alloc|batch] @OPTIONS $commandLine\n");
         }
     }
 }
@@ -360,6 +367,13 @@ sub checkForMpibind
     }else{
         return 0;
     }
+}
+
+sub getFluxVer
+{
+    my $version = `flux --version | grep commands`;
+    $version =~ /commands:\s+(\d+\.\d+)/ and return $1;
+    return 1;
 }
 
 #

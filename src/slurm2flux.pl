@@ -17,6 +17,8 @@ $account_opt, $acct_freq_opt, $ail_type_opt, $alps_opt, $attach_opt, $batch_opt,
 my (@lreslist, @SlurmScriptOptions);
 my ($commandLine, $scriptFile, $scriptArgs, $tempFile, $command, $flag);
 my @OPTIONS = ();
+my $outshebang = '';
+my $outtext = '';
 
 #
 # Save off ARGV so we can override the script directives if needed later (sbatch)
@@ -29,9 +31,11 @@ usage() if ($help_opt);
 
 my $hasMpibind = checkForMpibind();
 
+my $fluxversion = getFluxVer();
+
 my $fluxcmd = 'flux';
 my $fluxpcmd = 'flux --parent';
-if( getFluxVer() < 0.48 ){
+if( $fluxversion < 0.48 ){
     $fluxcmd = 'flux mini';
     $fluxpcmd = 'flux --parent mini';
 }
@@ -63,25 +67,37 @@ if( ( $0 =~ /sbatch$/ and !$wrap_opt ) or ( $0 =~ /slurm2flux/ and -e $ARGV[0] a
     }
 
     # Check job script
-    my $lineCtr = 0;
+    my $firstline = <FDIN>;
+    if( $firstline =~ /^#!/ ){
+        $outshebang = $firstline;
+    }else{
+        $outshebang = "#!/bin/sh\n";
+        $outtext .= $firstline;
+    }
     foreach my $line (<FDIN>) {
-    	$lineCtr++;
-    	if (($lineCtr == 1) && ($line !~ /^#!/ && $tempFile)) {
-	        print FDOUT "#! /bin/sh\n";
-    	}
-    	print FDOUT $line if( $tempFile);
-    	if ($line =~ /^\s*#\s*SBATCH\s+/) {
-	        chomp $line;
-	        $line =~ s/^\s*#\s*SBATCH\s+//; # Remove #SBATCH from line.
-	        $line =~ s/#.*//;               # Remove comments
-	        $line =~ s/\s+$//;              # Remove trailing whitespace
-	        my @args = split /\s+/, $line;
-	        foreach my $arg (@args) {
+        if( $0 =~ /slurm2flux/ and $line =~s/^\s*srun\s+// ){
+            my $s2fline = `$0 $line`;
+            $s2fline =~ s/\[run\|alloc\|batch\]/run/;
+            $outtext .= $s2fline;
+        }else{
+            $outtext .= $line;
+            if ($line =~ /^\s*#\s*SBATCH\s+/) {
+	            chomp $line;
+	            $line =~ s/^\s*#\s*SBATCH\s+//; # Remove #SBATCH from line.
+	            $line =~ s/#.*//;               # Remove comments
+	            $line =~ s/\s+$//;              # Remove trailing whitespace
+	            my @args = split /\s+/, $line;
+	            foreach my $arg (@args) {
 	                push @SlurmScriptOptions, @args;
+	            }
 	        }
-	    }
+        }
     }
     close FDIN;
+    if( $tempFile ){
+        print FDOUT $outshebang;
+        print FDOUT $outtext;
+    }
     close FDOUT;
     
     # Check script options.
@@ -349,12 +365,36 @@ if( $0 =~ /salloc$/ ){
         if( $jobid_opt ){
             printf("flux proxy $jobid_opt $fluxcmd [run|alloc|batch] @OPTIONS $commandLine\n");
         }else{
-            printf("$fluxcmd [run|alloc|batch] @OPTIONS $commandLine\n");
+            if( $outtext and $fluxversion >= 0.48 ){
+                printFluxScript();
+            }else{
+                printf("$fluxcmd [run|alloc|batch] @OPTIONS $commandLine\n");
+            }
         }
     }
 }
 $exit_status = $exit_status >> 8;
 exit $exit_status;
+
+### helper functions ###
+
+#
+# print out a job script that will work with flux batch
+#
+sub printFluxScript
+{
+    print $outshebang;
+    print "### Flux directives ###\n";
+    foreach my $fluxopt (@OPTIONS){
+        print "#FLUX: $fluxopt\n";
+    }
+    print "\n";
+    print "### Original script. ###\n";
+    print "### #SBATCH directives are preserved but will be ignored by Flux.\n";
+    print "### 'srun' commands are converted to 'flux run'.\n";
+    print "### Other Slurm commands are not converted.\n";
+    print $outtext;
+}
 
 #
 # check to see if Flux system instance is using mpibind.
@@ -369,6 +409,9 @@ sub checkForMpibind
     }
 }
 
+#
+# check Flux version to determine which interface to use
+#
 sub getFluxVer
 {
     my $version = `flux --version | grep commands`;

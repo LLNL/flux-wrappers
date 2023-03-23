@@ -221,7 +221,16 @@ def main(parsedargs):
             "r": "running",
             "pending": "pending",
             "pd": "pending",
-            "all": "active",
+            "all": "active,inactive",
+            "f": "failed",
+            "cg": "cleanup",
+            "completing": "cleanup",
+            "ca": "cancelled",
+            "cancelled": "cancelled",
+            "to": "timeout",
+            "timeout": "timeout",
+            "cd": "completed",
+            "completed": "completed",
         }
 
         # Normalize and search for state in known states.

@@ -75,17 +75,23 @@ if( ( $0 =~ /sbatch$/ and !$wrap_opt ) or ( $0 =~ /slurm2flux/ and -e $ARGV[0] a
         $outtext .= $firstline;
     }
     foreach my $line (<FDIN>) {
-        $outtext .= $line;
-    	if ($line =~ /^\s*#\s*SBATCH\s+/) {
-	        chomp $line;
-	        $line =~ s/^\s*#\s*SBATCH\s+//; # Remove #SBATCH from line.
-	        $line =~ s/#.*//;               # Remove comments
-	        $line =~ s/\s+$//;              # Remove trailing whitespace
-	        my @args = split /\s+/, $line;
-	        foreach my $arg (@args) {
+        if( $0 =~ /slurm2flux/ and $line =~s/^\s*srun\s+// ){
+            my $s2fline = `$0 $line`;
+            $s2fline =~ s/\[run\|alloc\|batch\]/run/;
+            $outtext .= $s2fline;
+        }else{
+            $outtext .= $line;
+            if ($line =~ /^\s*#\s*SBATCH\s+/) {
+	            chomp $line;
+	            $line =~ s/^\s*#\s*SBATCH\s+//; # Remove #SBATCH from line.
+	            $line =~ s/#.*//;               # Remove comments
+	            $line =~ s/\s+$//;              # Remove trailing whitespace
+	            my @args = split /\s+/, $line;
+	            foreach my $arg (@args) {
 	                push @SlurmScriptOptions, @args;
+	            }
 	        }
-	    }
+        }
     }
     close FDIN;
     if( $tempFile ){
@@ -382,7 +388,11 @@ sub printFluxScript
     foreach my $fluxopt (@OPTIONS){
         print "#FLUX: $fluxopt\n";
     }
-    print "\n### Original script. #SBATCH directives will be ignored by Flux. ###\n";
+    print "\n";
+    print "### Original script. ###\n";
+    print "### #SBATCH directives are preserved but will be ignored by Flux.\n";
+    print "### 'srun' commands are converted to 'flux run'.\n";
+    print "### Other Slurm commands are not converted.\n";
     print $outtext;
 }
 

@@ -177,6 +177,17 @@ def disclaimer():
         f'{myname}: hint: See "man flux jobs" for help using the native commands.'
     )
 
+def filter_byhostlist(jobs, jobfilter):
+    """
+    filter out jobs that did not run on hosts in jobfilter
+    """
+    filtered_jobs = []
+    for j in jobs:
+        for h in jobfilter:
+            if h in flux.hostlist.Hostlist(j.nodelist):
+                filtered_jobs.append(j)
+    return filtered_jobs
+
 
 def main(parsedargs):
     args, unknown_args = parsedargs
@@ -210,7 +221,16 @@ def main(parsedargs):
             "r": "running",
             "pending": "pending",
             "pd": "pending",
-            "all": "active",
+            "all": "active,inactive",
+            "f": "failed",
+            "cg": "cleanup",
+            "completing": "cleanup",
+            "ca": "canceled",
+            "cancelled": "canceled",
+            "to": "timeout",
+            "timeout": "timeout",
+            "cd": "completed",
+            "completed": "completed",
         }
 
         # Normalize and search for state in known states.
@@ -247,7 +267,7 @@ def main(parsedargs):
     # args.nodelist if a nodelist was specified by the user.
     if args.nodelist is not None:
         nodelist = flux.hostlist.Hostlist(args.nodelist)
-        jobs = [job for job in jobs if job.nodelist in nodelist]
+        jobs = filter_byhostlist(jobs, nodelist)
 
     # If run with very verbose, show equivalent flux commands to what we
     # are showing in fsqueue.

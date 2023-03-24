@@ -386,7 +386,7 @@ sub printFluxScript
     print $outshebang;
     print "### Flux directives ###\n";
     foreach my $fluxopt (@OPTIONS){
-        print "#FLUX: $fluxopt\n";
+        print "#flux: $fluxopt\n";
     }
     print "\n";
     print "### Original script. ###\n";

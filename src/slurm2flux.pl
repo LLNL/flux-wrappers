@@ -219,6 +219,12 @@ if ($mem_bind_opt and $mem_bind_opt ne 'none') {
     print STDERR "Warning: --mem-bind options other than 'none' are not supported. Ignoring '--mem-bind=$mem_bind_opt'.\n";
 }
 
+if ($mpi_opt) {
+    if( $mpi_opt eq 'none' ){
+        push @OPTIONS, "-o mpi=$mpi_opt ";
+    }
+}
+
 if ($mpibind_opt and ($0 =~ /srun$/ or $0 =~ /slurm2flux$/)) {
     if( $mpibind_opt eq 'off' ){
         unless( $cpu_bind_opt ){
@@ -668,6 +674,7 @@ sub GetOpts
         'jobid=s'                => \$jobid_opt,
         'l|label'         	     => \$label_opt,
         'mem-bind=s'             => \$mem_bind_opt,
+        'mpi=s'                  => \$mpi_opt,
         'mpibind=s'              => \$mpibind_opt,
 		'nice=i'         	     => \$priority_opt,
 		'N|nodes=i'        	     => \$nodes_opt,
@@ -726,6 +733,7 @@ OPTIONS
 --jobid=<jobid>             Run under an existing allocation (srun only).
 -l|--label                  Label IO with task tank prefixes.
 --mem-bind=none             Memory binding preferences. 'none' is the only currently valid value.
+--mpi=none                  Use native mpi libraries.
 --mpibind=<option>          Options for mpibind pluging.
 -N|--nodes=<count>          Number of nodes needed.
 -n|--ntasks=<count>         Number of tasks needed.

@@ -90,7 +90,7 @@ class SlurmFormatter:
             "%": "",
             "%a": job.username,
             "%i": job.id.f58,
-            "%P": str(job.sched.queue),
+            "%P": job.queue,
             "%j": job.name,
             "%u": job.username,
             "%t": job.status_abbrev,
@@ -252,6 +252,12 @@ def main(parsedargs):
             job_ids.append(flux.job.JobID(id))
             flux_command += " " + id
 
+    # queues
+    queue = ""
+    if args.partition is not None:
+        queue = args.partition
+        flux_command += f" --queue={queue}"
+
     # Initialize a connection to flux.
     conn = flux.Flux()
 
@@ -259,7 +265,7 @@ def main(parsedargs):
     # the search will be limited to the jobs specified. Otherwise flux will
     # return a full list of all jobs matching the other filters we've specified.
     rpc = flux.job.JobList(
-        conn, user=user, ids=job_ids, filters=job_states
+        conn, user=user, ids=job_ids, queue=queue, filters=job_states
     ).fetch_jobs()
     jobs = list(rpc.get_jobinfos())
 
@@ -315,21 +321,32 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("-u", "--user", metavar="<user>", help="show jobs run by user")
+
     parser.add_argument(
         "-t",
         "--state",
         metavar="<state>",
         help='use "-t all" to show jobs in all states, including completed jobs',
     )
+
     parser.add_argument(
         "-j",
         "--jobs",
         metavar="<jobid>,<jobid>,....",
         help="display only jobs specified",
     )
+
+    parser.add_argument(
+        "-p",
+        "--partition",
+        metavar="<partition>",
+        help="display only jobs in specified partition/queue.",
+    )
+
     parser.add_argument(
         "-h", "--noheader", action="store_true", help="do not print a header"
     )
+
     parser.add_argument(
         "-o",
         "--format",

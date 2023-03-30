@@ -47,7 +47,8 @@ sub run_drain{
 sub run_list{
     #my ($h,$v) = @_;
     my %params = @_;
-    open CMD, "flux resource list -o '{nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
+    my %line = ();
+    open CMD, "flux resource list -o '{queue} {nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
     if( $params{verbose} ){
         print "#running : flux resource list\n"
     }
@@ -56,15 +57,26 @@ sub run_list{
     }
     <CMD>;
     while( <CMD> ){
-        my( $nnodes, $state, $nodelist ) = split;
+        my( $queue, $nnodes, $state, $nodelist );
+        if( /^\s+/ ){
+            ( $nnodes, $state, $nodelist ) = split;
+            $queue = 'default';
+        }else{
+            ( $queue, $nnodes, $state, $nodelist ) = split;
+        }
         if( $state =~ /free/ ){
             $state = 'idle';
         }elsif( $state =~ /alloc/ ){
             $state = 'alloc';
         }
-        printf( "pdebug       up    1:00:00  %4d %6.6s %s\n", $nnodes, $state, $nodelist );
+        push @{ $line{$queue} }, sprintf( "%-10s   up    1:00:00   %4d %6.6s %s\n", $queue, $nnodes, $state, $nodelist );
     }
     close CMD;
+    foreach my $q ( sort {$a cmp $b} keys %line ){
+        foreach my $l ( @{ $line{$q} } ){
+            print "$l";
+        }
+    }
 }
 
 ### Main ####

@@ -254,7 +254,12 @@ if ($ntasks_opt) {
 }
 
 if ($ntasks_per_node_opt and $nodes_opt and !$cpus_per_task_opt and !$ntasks_opt) {
-    push @OPTIONS, "--tasks-per-node=$ntasks_per_node_opt ";
+    if( $0 =~ /srun$/ ){
+        push @OPTIONS, "--tasks-per-node=$ntasks_per_node_opt ";
+    }elsif ( $nodes_opt ){
+        my $temp_tasks = $ntasks_per_node_opt * $nodes_opt;
+        push @OPTIONS, "-n $temp_tasks ";
+    }
 }
 
 if ($nodes_opt) {

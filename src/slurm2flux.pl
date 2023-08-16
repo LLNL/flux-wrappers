@@ -160,6 +160,8 @@ if ($chdir_opt) {
 }
 
 if ($error_opt) {
+    $error_opt =~ s/\%j/\{\{id\}\}/g;
+    $error_opt =~ s/\%x/\{\{name\}\}/g;
 	push @OPTIONS, "--error=$error_opt ";
 }
 
@@ -271,6 +273,8 @@ if ($no_shell_opt and $0 =~ /salloc$/) {
 }
 
 if ($output_opt) {
+    $output_opt =~ s/\%j/\{\{id\}\}/g;
+    $output_opt =~ s/\%x/\{\{name\}\}/g;
 	push @OPTIONS, "--output=$output_opt ";
 }
 

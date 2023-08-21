@@ -286,6 +286,10 @@ if ($priority_opt=~/^\d+$/) {
 	push @OPTIONS, "--urgency=$priority_opt ";
 }
 
+if ($pty_opt) {
+    push @OPTIONS, "-o pty.interactive ";
+}
+
 if ($time_opt) {
 	my $time = timeToSeconds($time_opt);
 	push @OPTIONS, "--time-limit=$time ";
@@ -693,6 +697,7 @@ sub GetOpts
         'no-shell'               => \$no_shell_opt,
 		'o|output=s'       	     => \$output_opt,
         'p|partition=s'    	     => \$partition_opt,
+        'pty'                    => \$pty_opt,
         'S|core-spec=s'          => \$corespec_opt,
 		'slurmd-debug=s'   	     => \$flux_debug_opt,
         'sockets-per-node=i'     => \$sockets_per_node_opt,
@@ -752,6 +757,7 @@ OPTIONS
 --nice=<number>             User defined priority.
 -o|--output=<filename>      Path and file name for stdout data.
 -p|--partion=<partition>    Partition or queue to submit job to.
+--pty                       Run in pseudo terminal mode.
 -S|--core-spec=<corecount>  Reserve cores for system processes.
 --slurmd-debug=<level>      Debugging added.
 --sockets-per-node=<count>  Number of sockets per node (must also use --cores-per-socket and --nodes).

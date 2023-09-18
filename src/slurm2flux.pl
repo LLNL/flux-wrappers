@@ -26,6 +26,11 @@ my $outtext = '';
 my @SAVEDARGV = @ARGV;
 
 GetOpts(@ARGV);
+foreach my $ii ( 0 .. $#ARGV ){
+    if( $ARGV[$ii] =~ /\W/ ){
+        $ARGV[$ii] = "\"$ARGV[$ii]\"";
+    }
+}
 $commandLine = "@ARGV";
 usage() if ($help_opt);
 

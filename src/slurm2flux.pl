@@ -27,7 +27,7 @@ my @SAVEDARGV = @ARGV;
 
 GetOpts(@ARGV);
 foreach my $ii ( 0 .. $#ARGV ){
-    if( $ARGV[$ii] =~ /\W/ ){
+    if( $ARGV[$ii] =~ /[\;\s]/ ){
         $ARGV[$ii] = "\"$ARGV[$ii]\"";
     }
 }

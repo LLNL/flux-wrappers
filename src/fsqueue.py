@@ -258,6 +258,12 @@ def main(parsedargs):
         queue = args.partition
         flux_command += f" --queue={queue}"
 
+    # job name
+    job_name = ""
+    if args.name is not None:
+        job_name = args.name
+        flux_command += f" --name={job_name}"
+
     # Initialize a connection to flux.
     conn = flux.Flux()
 
@@ -265,7 +271,7 @@ def main(parsedargs):
     # the search will be limited to the jobs specified. Otherwise flux will
     # return a full list of all jobs matching the other filters we've specified.
     rpc = flux.job.JobList(
-        conn, user=user, ids=job_ids, queue=queue, filters=job_states
+        conn, user=user, ids=job_ids, queue=queue, name=job_name, filters=job_states
     ).fetch_jobs()
     jobs = list(rpc.get_jobinfos())
 
@@ -377,4 +383,8 @@ if __name__ == "__main__":
         "-w", "--nodelist", metavar="<nodelist>", help="show jobs that ran on nodelist"
     )
     
+    parser.add_argument(
+        "-n", "--name", metavar="<job_name>", help="show jobs named job_name"
+    )
+
     main(parser.parse_known_args())

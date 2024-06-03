@@ -325,6 +325,10 @@ if ($thp_opt) {
     }
 }
 
+if ($unbuffered_opt and $0 =~ /srun$/) {
+    push @OPTIONS, "--unbuffered ";
+}
+
 if ($verbose_opt and $0 !~ /sbatch$/) {
 	push @OPTIONS, "--verbose ";
 }
@@ -730,6 +734,7 @@ sub GetOpts
         'sockets-per-node=i'     => \$sockets_per_node_opt,
 		't|time=s'         	     => \$time_opt,
         'thp=s'                  => \$thp_opt,
+        'u|unbuffered'           => \$unbuffered_opt,
 		'v|verbose'       	     => \$verbose_opt,
         'wait'                   => \$wait_opt,
         'wrap=s'                 => \$wrap_opt,
@@ -792,6 +797,7 @@ OPTIONS
 --sockets-per-node=<count>  Number of sockets per node (must also use --cores-per-socket and --nodes).
 -t|--time=<timelimit>       Wall time of job.
 --thp=[always|never]        Control transparent huge page (THP) support on nodes of an allocation.
+-u|--unbuffered             Disable buffering of standard inuput and output.
 -v|-verbose                 Give more messages.
 --wait                      Do not return until job completes.
 --wrap=<command>            Wrap command in an implied script.

@@ -25,7 +25,7 @@ sub print_warn($){
 sub check_allocation(){
     my $jobid = `flux getattr jobid`;
     unless( defined $jobid and $jobid =~ /^f/ ){
-        print "Error: $0 must be run in a Flux allocation. Exiting.\n";
+        print "Error: $0 must be run in a Flux allocation or with '-j JOBID'. Exiting.\n";
         exit 1;
     }
 }

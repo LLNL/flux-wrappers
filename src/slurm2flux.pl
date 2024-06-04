@@ -779,7 +779,7 @@ OPTIONS
 -i|--input=<filename>       Path and file name for stdin.
 -J|--job-name=<jobname>     Name for the job.
 --jobid=<jobid>             Run under an existing allocation (srun only).
--l|--label                  Label IO with task tank prefixes.
+-l|--label                  Label IO with task rank prefixes.
 --mem-bind=none             Memory binding preferences. 'none' is the only currently valid value.
 --mpi=none                  Use native mpi libraries.
 --mpibind=<option>          Options for mpibind pluging.

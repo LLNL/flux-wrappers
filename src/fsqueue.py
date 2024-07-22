@@ -50,9 +50,13 @@ class SlurmFormatter:
         time = int(time)
 
         # Convert time into hours, minutes, and seconds.
+        days = time // 86400
         hours = time // 3600 % 24
         minutes = time // 60 % 60
         seconds = time % 60
+
+        if days > 0:
+            return f"{days}-{hours:02}:{minutes:02}:{seconds:02}"
 
         if hours > 0:
             return f"{hours}:{minutes:02}:{seconds:02}"

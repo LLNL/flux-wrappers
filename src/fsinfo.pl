@@ -44,32 +44,86 @@ sub run_drain{
     close CMD;
 }
 
+sub format_time{
+    # should go to minutes, but that seems hard this morning.
+    my ($instring) = @_;
+    my $value = 0;
+    if( $instring =~ /([0-9\.]+)d/ and $value = $1 ){
+        my $days = int($value);
+        my $remainder = $value - $days;
+        if( $remainder > 0 ){
+            my $hours = int($remainder * 24);
+            if( $hours < 10 ){
+                $hours = "0".$hours;
+            }
+            return "$days-$hours:00:00";
+        }else{
+            return "$days-00:00:00";
+        }
+    }elsif( $instring =~ /([0-9\.]+)h/ and $value = $1 ){
+        my $hours = int($value);
+        return "$hours:00:00";
+    }
+}
+
 sub run_list{
     #my ($h,$v) = @_;
     my %params = @_;
     my %line = ();
+    my %avail = ();
+    my %timelimit = ();
+    open CMD, "flux queue list |" or die "$0 couldn't run 'flux queue list'.\n";
+    if( $params{verbose} ){
+        print "#running: flux queue list\n";
+    }
+    <CMD>;
+    while( <CMD> ){
+        my @line = split;
+        $line[0] =~ s/\*//;
+        $timelimit{$line[0]} = format_time($line[2]);
+    }
+    close CMD;
+    open CMD, "flux queue status |" or die "$0 couldn't run 'flux queue status'.\n";
+    if( $params{verbose} ){
+        print "# running: flux queue status\n";
+    }
+    my $submission = my $scheduling = "";
+    while( <CMD> ){
+        my $queue = "";
+        /(\w+)\: Job submission is (\w+)/ and $queue = $1, $submission = $2;
+        if( /(\w+)\: Scheduling is (\w+)/ and $queue = $1, $scheduling = $2 ){
+            if( $submission eq "enabled" and $scheduling eq "started" ){
+                $avail{$queue} = "up";
+            }else{
+                $avail{$queue} = "down";
+            }
+        }
+    }
+    close CMD;
     open CMD, "flux resource list -o '{queue} {nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
     if( $params{verbose} ){
-        print "#running : flux resource list\n"
+        print "#running : flux resource list\n";
     }
     if( $params{header} ){
         print "PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST\n";
     }
     <CMD>;
     while( <CMD> ){
-        my( $queue, $nnodes, $state, $nodelist );
+        my( $queuestr, $nnodes, $state, $nodelist );
         if( /^\s+/ ){
             ( $nnodes, $state, $nodelist ) = split;
-            $queue = 'default';
+            $queuestr = 'default';
         }else{
-            ( $queue, $nnodes, $state, $nodelist ) = split;
+            ( $queuestr, $nnodes, $state, $nodelist ) = split;
         }
         if( $state =~ /free/ ){
             $state = 'idle';
         }elsif( $state =~ /alloc/ ){
             $state = 'alloc';
         }
-        push @{ $line{$queue} }, sprintf( "%-10s   up    1:00:00   %4d %6.6s %s\n", $queue, $nnodes, $state, $nodelist );
+        foreach my $queue ( split /,/, $queuestr ){
+            push @{ $line{$queue} }, sprintf( "%-10s %4s %10s   %4d %6.6s %s\n", $queue, $avail{$queue}, $timelimit{$queue}, $nnodes, $state, $nodelist );
+        }
     }
     close CMD;
     foreach my $q ( sort {$a cmp $b} keys %line ){

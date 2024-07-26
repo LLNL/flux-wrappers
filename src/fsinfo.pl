@@ -44,35 +44,13 @@ sub run_drain{
     close CMD;
 }
 
-sub format_time{
-    # should go to minutes, but that seems hard this morning.
-    my ($instring) = @_;
-    my $value = 0;
-    if( $instring =~ /([0-9\.]+)d/ and $value = $1 ){
-        my $days = int($value);
-        my $remainder = $value - $days;
-        if( $remainder > 0 ){
-            my $hours = int($remainder * 24);
-            if( $hours < 10 ){
-                $hours = "0".$hours;
-            }
-            return "$days-$hours:00:00";
-        }else{
-            return "$days-00:00:00";
-        }
-    }elsif( $instring =~ /([0-9\.]+)h/ and $value = $1 ){
-        my $hours = int($value);
-        return "$hours:00:00";
-    }
-}
-
 sub run_list{
     #my ($h,$v) = @_;
     my %params = @_;
     my %line = ();
     my %avail = ();
     my %timelimit = ();
-    open CMD, "flux queue list |" or die "$0 couldn't run 'flux queue list'.\n";
+    open CMD, "flux queue list -o '{queue} {limits.timelimit!H}' |" or die "$0 couldn't run 'flux queue list'.\n";
     if( $params{verbose} ){
         print "#running: flux queue list\n";
     }
@@ -80,7 +58,10 @@ sub run_list{
     while( <CMD> ){
         my @line = split;
         $line[0] =~ s/\*//;
-        $timelimit{$line[0]} = format_time($line[2]);
+        if( $line[1] =~/^\d+$/ ){
+            $line[1] = $line[1]."-00:00:00";
+        }
+        $timelimit{$line[0]} = $line[1];
     }
     close CMD;
     open CMD, "flux queue status |" or die "$0 couldn't run 'flux queue status'.\n";

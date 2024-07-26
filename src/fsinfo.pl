@@ -48,28 +48,63 @@ sub run_list{
     #my ($h,$v) = @_;
     my %params = @_;
     my %line = ();
+    my %avail = ();
+    my %timelimit = ();
+    open CMD, "flux queue list -o '{queue} {limits.timelimit!H}' |" or die "$0 couldn't run 'flux queue list'.\n";
+    if( $params{verbose} ){
+        print "#running: flux queue list\n";
+    }
+    <CMD>;
+    while( <CMD> ){
+        my @line = split;
+        $line[0] =~ s/\*//;
+        if( $line[1] =~/^\d+$/ ){
+            $line[1] = $line[1]."-00:00:00";
+        }
+        $timelimit{$line[0]} = $line[1];
+    }
+    close CMD;
+    open CMD, "flux queue status |" or die "$0 couldn't run 'flux queue status'.\n";
+    if( $params{verbose} ){
+        print "# running: flux queue status\n";
+    }
+    my $submission = my $scheduling = "";
+    while( <CMD> ){
+        my $queue = "";
+        /(\w+)\: Job submission is (\w+)/ and $queue = $1, $submission = $2;
+        if( /(\w+)\: Scheduling is (\w+)/ and $queue = $1, $scheduling = $2 ){
+            if( $submission eq "enabled" and $scheduling eq "started" ){
+                $avail{$queue} = "up";
+            }else{
+                $avail{$queue} = "down";
+            }
+        }
+    }
+    close CMD;
     open CMD, "flux resource list -o '{queue} {nnodes} {state} {nodelist}'|" or die "$0 couldn't run 'flux resource list'.\n";
     if( $params{verbose} ){
-        print "#running : flux resource list\n"
+        print "#running : flux resource list\n";
     }
     if( $params{header} ){
         print "PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST\n";
     }
     <CMD>;
     while( <CMD> ){
-        my( $queue, $nnodes, $state, $nodelist );
+        my( $queuestr, $nnodes, $state, $nodelist );
         if( /^\s+/ ){
             ( $nnodes, $state, $nodelist ) = split;
-            $queue = 'default';
+            $queuestr = 'default';
         }else{
-            ( $queue, $nnodes, $state, $nodelist ) = split;
+            ( $queuestr, $nnodes, $state, $nodelist ) = split;
         }
         if( $state =~ /free/ ){
             $state = 'idle';
         }elsif( $state =~ /alloc/ ){
             $state = 'alloc';
         }
-        push @{ $line{$queue} }, sprintf( "%-10s   up    1:00:00   %4d %6.6s %s\n", $queue, $nnodes, $state, $nodelist );
+        foreach my $queue ( split /,/, $queuestr ){
+            push @{ $line{$queue} }, sprintf( "%-10s %4s %10s   %4d %6.6s %s\n", $queue, $avail{$queue}, $timelimit{$queue}, $nnodes, $state, $nodelist );
+        }
     }
     close CMD;
     foreach my $q ( sort {$a cmp $b} keys %line ){

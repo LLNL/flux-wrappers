@@ -103,7 +103,9 @@ sub run_list{
             $state = 'alloc';
         }
         foreach my $queue ( split /,/, $queuestr ){
-            push @{ $line{$queue} }, sprintf( "%-10s %4s %10s   %4d %6.6s %s\n", $queue, $avail{$queue}, $timelimit{$queue}, $nnodes, $state, $nodelist );
+            if( defined $avail{$queue} ){
+                push @{ $line{$queue} }, sprintf( "%-10s %4s %10s   %4d %6.6s %s\n", $queue, $avail{$queue}, $timelimit{$queue}, $nnodes, $state, $nodelist );
+            }
         }
     }
     close CMD;

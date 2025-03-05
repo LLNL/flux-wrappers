@@ -403,12 +403,12 @@ if( $0 =~ /salloc$/ ){
             if( $verbose_opt ) {
                 print "# running: flux proxy $jobid_opt $fluxcmd run @OPTIONS $commandLine\n";
             }
-            $exit_status = system("flux proxy $jobid_opt $fluxcmd run @OPTIONS $commandLine");
+            $exit_status = exec("flux proxy $jobid_opt $fluxcmd run @OPTIONS $commandLine");
         }else{
             if( $verbose_opt ) {
                 print "# running: $fluxcmd run @OPTIONS $commandLine\n";
             }
-	        $exit_status = system("$fluxcmd run @OPTIONS $commandLine");
+	        $exit_status = exec("$fluxcmd run @OPTIONS $commandLine");
         }
     }else{
         if( $jobid_opt ){

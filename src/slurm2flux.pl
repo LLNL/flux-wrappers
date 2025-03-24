@@ -326,7 +326,7 @@ if ($thp_opt) {
 }
 
 if ($unbuffered_opt and $0 =~ /srun$/) {
-    push @OPTIONS, "--unbuffered ";
+    push @OPTIONS, "--unbuffered -o pty.interactive ";
 }
 
 if ($verbose_opt and $0 !~ /sbatch$/) {

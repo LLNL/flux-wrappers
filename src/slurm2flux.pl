@@ -522,7 +522,8 @@ sub processDepend
         if( $condition eq 'after' or
             $condition eq 'afterany' or
             $condition eq 'afterok' or 
-            $condition eq 'afternotak'
+            $condition eq 'afternotok' or
+            $condition eq 'afterexcept'
             ){
             foreach my $jobid (@depends){
                 $retstr .= "--dependency=$condition:$jobid ";

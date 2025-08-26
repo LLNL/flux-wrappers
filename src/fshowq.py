@@ -39,7 +39,7 @@ def parse_date(date) :
     '''
     turn whatever flux gives me into something like what showq uses
     '''
-    dstr = time.strftime("%a %b %d %H:%M:%S",time.gmtime(date))
+    dstr = time.strftime("%a %b %d %H:%M:%S",time.localtime(date))
     return dstr
 
 def parse_exception(exception) :
@@ -81,17 +81,17 @@ def printonejob(j,jstate) :
     print one job
     '''
     if jstate == "completed" :
-        remstring = parse_time(j.runtime)
+        remstring = parse_time(j.contextual_time)
         timestring = parse_date(j.t_cleanup)
         exceptstring = parse_exception(j.exception)
         nastring = " NA         NA        NA         NA        "
         print(f"{j.id.f58:<10} {j.username:<9} {nastring} {j.status:<12} {exceptstring:>5} {j.ntasks:>6} {remstring:>12}  {timestring}")
     else :
         if jstate == "active" :
-            remstring = parse_time(j.t_remaining)
+            remstring = parse_time(j.contextual_time)
             timestring = parse_date(j.t_run)
         else :
-            remstring = parse_time(j.runtime)
+            remstring = parse_time(j.contextual_time)
             timestring = parse_date(j.t_submit)
         print(f"{j.id.f58:<10} {j.username:<9}  {j.status:<9}   {j.ntasks:>6}    {remstring:>9}  {timestring}")
 
@@ -130,29 +130,16 @@ def main(parsedargs) :
     else :
         decid = fjob.id_parse(args.jobid)
         mylist = fjob.JobList(myhandle,user=user,ids=[decid])
-    donejobs = []
-    pendjobs = []
-    runjobs = []
-    otherjobs = []
-    for j in mylist.jobs() :
-        if j.status_abbrev == "CD" or \
-           j.status_abbrev == "CA" or \
-           j.status_abbrev == "TO" or \
-           j.status_abbrev == "F" :
-            donejobs.append(j)
-        elif j.status_abbrev == "PD" :
-            pendjobs.append(j)
-        elif j.status_abbrev == "R" :
-            runjobs.append(j)
-        else :
-            otherjobs.append(j)
-    # print an appropriate set of jobs
+    donejobs = [j for j in mylist.jobs() if j.state_single == "I"]
+    pendjobs = [j for j in mylist.jobs() if j.state_single in {"P", "S"}]
+    runjobs = [j for j in mylist.jobs() if j.state_single in {"R", "C"}]
+    blockedjobs = [j for j in mylist.jobs() if j.state_single == "D"]
     if args.c :
         printjobs(donejobs, "completed", args.noheader)
         njobs = len(donejobs)
     elif args.b :
-        printjobs(otherjobs, "blocked", args.noheader)
-        njobs = len(otherjobs)
+        printjobs(blockedjobs, "blocked", args.noheader)
+        njobs = len(blockedjobs)
     elif args.i :
         printjobs(pendjobs, "eligible", args.noheader)
         njobs = len(pendjobs)
@@ -162,8 +149,8 @@ def main(parsedargs) :
     else :
         printjobs(runjobs, "active", args.noheader)
         printjobs(pendjobs, "eligible", args.noheader)
-        printjobs(otherjobs, "blocked", args.noheader)
-        njobs = len(runjobs) + len(pendjobs) + len(otherjobs)
+        printjobs(blockedjobs, "blocked", args.noheader)
+        njobs = len(runjobs) + len(pendjobs) + len(blockedjobs)
     if args.noheader == False :
         print(f"Total jobs: {njobs:>3}")
         print()
